@@ -1,0 +1,29 @@
+{
+  "name": "@glare9/provenance",
+  "version": "0.1.0-alpha.1",
+  "description": "Open, independently verifiable governance evidence ledger",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "connectors/*"
+  ],
+  "main": "./src/index.js",
+  "exports": "./src/index.js",
+  "bin": {
+    "g9p": "./src/cli/g9p.js"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "demo": "node src/cli/g9p.js demo",
+    "verify": "node src/cli/g9p.js verify",
+    "start:ledger": "npm run start --workspace=@glare9/provenance-ledger-service",
+    "start:connector:mysql": "npm run start --workspace=@glare9/provenance-connector-mysql",
+    "test": "node --test test/*.test.js",
+    "test:all": "node scripts/test-all.js",
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.js"
+  }
+}

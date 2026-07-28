@@ -1,0 +1,19 @@
+{
+  "name": "@glare9/provenance-connector-mysql",
+  "version": "0.1.0-alpha.1",
+  "description": "Schema-neutral MySQL transactional-outbox connector for Glare•9 Provenance",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "@glare9/provenance-connector-contract": "file:../../packages/connector-contract",
+    "mysql2": "^3.23.1"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/main.js",
+    "test": "node --test test/*.test.js",
+    "test:integration": "node --test test/mysql.integration.test.js"
+  }
+}

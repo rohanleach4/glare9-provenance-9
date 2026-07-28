@@ -1,0 +1,31 @@
+# Local build and maintainer instructions. This file must never be committed.
+/Global-readme.md
+
+# Dependencies and build output
+/node_modules/
+/dist/
+/build/
+/coverage/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime data and unfinished ledger segments
+/data/
+/runtime/
+*.g9p.part
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
