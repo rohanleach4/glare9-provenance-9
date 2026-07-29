@@ -1,4 +1,4 @@
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, open, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
@@ -15,6 +15,8 @@ import {
   writeRoutingEpoch,
   writeSegment,
 } from "@glare9/provenance";
+
+import { DurableIntake } from "./durable-intake.js";
 
 function ledgerDirectoryName(ledgerId) {
   return toHex(domainHash("ledger-directory-v1", Buffer.from(ledgerId, "utf8")));
@@ -36,6 +38,14 @@ function epochDirectoryName(epochNumber) {
   return `epoch-${epochNumber.toString().padStart(12, "0")}`;
 }
 
+function epochStorageKey(ledgerDirectory, epochNumber) {
+  return `${ledgerDirectory}\0${epochNumber}`;
+}
+
+function ledgerEpochKey(ledgerId, epochNumber) {
+  return `${ledgerId}\0${epochNumber}`;
+}
+
 function routingPoliciesEqual(left, right) {
   return left.id === right.id
     && left.version === right.version
@@ -51,6 +61,29 @@ async function directories(path) {
   } catch (error) {
     if (error.code === "ENOENT") return [];
     throw error;
+  }
+}
+
+async function syncDirectory(path) {
+  const handle = await open(path, "r");
+  try {
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+async function discardProvisionalFiles(path, pattern) {
+  let changed = false;
+  try {
+    for (const entry of await readdir(path, { withFileTypes: true })) {
+      if (!entry.isFile() || !pattern.test(entry.name)) continue;
+      await unlink(join(path, entry.name));
+      changed = true;
+    }
+    if (changed) await syncDirectory(path);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
   }
 }
 
@@ -91,16 +124,20 @@ export class LocalLedger {
     this.dataDirectory = dataDirectory;
     this.segmentDirectory = join(dataDirectory, "segments");
     this.routingDirectory = join(dataDirectory, "routing");
+    this.intakeDirectory = join(dataDirectory, "intake");
     this.signer = signer;
     this.topologyAuthority = topologyAuthority;
     this.adoptLegacyRoutingHistory = adoptLegacyRoutingHistory;
-    this.routingPolicy = createRoutingPolicy(shardCount);
+    this.defaultRoutingPolicy = createRoutingPolicy(shardCount);
     this.routingEpochs = new Map();
     this.routingEpochDirectories = new Map();
+    this.routingHistory = new Map();
     this.ledgerSegmentFormats = new Map();
     this.eventIndex = new Map();
+    this.pendingIndex = new Map();
     this.shardStates = new Map();
-    this.ingestTail = Promise.resolve();
+    this.intake = new DurableIntake(this.intakeDirectory);
+    this.operationTail = Promise.resolve();
   }
 
   async initialize() {
@@ -122,9 +159,9 @@ export class LocalLedger {
       }
       for (const epochDirectory of childDirectories.filter((name) => /^epoch-[0-9]{12}$/u.test(name))) {
         const epochNumber = Number(epochDirectory.slice(6));
-        const routingEpoch = this.routingEpochDirectories.get(ledgerDirectory);
-        if (routingEpoch === undefined || routingEpoch.epochNumber !== epochNumber) {
-          throw new G9pError("LEDGER_ROUTING_EPOCH", `Segment directory ${epochDirectory} has no matching active signed routing epoch`);
+        const routingEpoch = this.routingEpochDirectories.get(epochStorageKey(ledgerDirectory, epochNumber));
+        if (routingEpoch === undefined) {
+          throw new G9pError("LEDGER_ROUTING_EPOCH", `Segment directory ${epochDirectory} has no matching signed routing epoch`);
         }
         const epochPath = join(ledgerPath, epochDirectory);
         for (const shardId of await directories(epochPath)) {
@@ -148,7 +185,31 @@ export class LocalLedger {
       }
       await this.#ensureGenesisRoutingEpoch(ledgerId, "Adopt existing G9P format version 1 history as routing epoch zero");
     }
+    this.#verifyTransitionHeads();
+    await this.#loadDurableIntake();
+    await this.#drainAccepted();
     return this;
+  }
+
+  async #loadDurableIntake() {
+    for (const record of await this.intake.initialize()) {
+      const existing = this.eventIndex.get(record.event.eventId);
+      if (existing !== undefined) {
+        if (existing.recordHash !== record.recordHash) {
+          throw new G9pError("EVENT_ID_CONFLICT", `Durable intake event ID ${record.event.eventId} conflicts with sealed history`);
+        }
+        await this.intake.remove(record);
+        continue;
+      }
+      const pending = this.pendingIndex.get(record.event.eventId);
+      if (pending !== undefined) {
+        if (pending.recordHash !== record.recordHash) {
+          throw new G9pError("EVENT_ID_CONFLICT", `Durable intake contains conflicting content for event ID ${record.event.eventId}`);
+        }
+        throw new G9pError("INTAKE_DUPLICATE", `Durable intake contains duplicate records for event ID ${record.event.eventId}`);
+      }
+      this.pendingIndex.set(record.event.eventId, record);
+    }
   }
 
   async #loadShardHistory({ ledgerDirectory, shardId, shardPath, routingEpoch }) {
@@ -157,6 +218,7 @@ export class LocalLedger {
     let expectedSegmentNumber = 0;
     const formatVersion = routingEpoch === null ? 1 : 2;
 
+    await discardProvisionalFiles(shardPath, /^segment-[0-9]{12}\.g9p\.part$/u);
     for (const fileName of await files(shardPath)) {
       const path = join(shardPath, fileName);
       const verified = await verifySegment(path, {
@@ -179,17 +241,17 @@ export class LocalLedger {
       if (verified.ledgerId !== ledgerId || ledgerDirectoryName(verified.ledgerId) !== ledgerDirectory) {
         throw new G9pError("LEDGER_DIRECTORY", `Segment ${path} is stored under the wrong ledger directory`);
       }
-      if (!routingPoliciesEqual(verified.routingPolicy, this.routingPolicy)) {
+      const epochNumber = routingEpoch?.epochNumber ?? 0;
+      const signedEpoch = routingEpoch
+        ?? this.routingEpochDirectories.get(epochStorageKey(ledgerDirectory, 0));
+      const expectedPolicy = signedEpoch?.routingPolicy ?? this.defaultRoutingPolicy;
+      if (!routingPoliciesEqual(verified.routingPolicy, expectedPolicy)) {
         throw new G9pError(
           "LEDGER_ROUTING_POLICY",
-          `Ledger ${verified.ledgerId} history uses routing policy ${verified.routingPolicy.id} version ${verified.routingPolicy.version} with ${verified.routingPolicy.shardCount} shards, but the service is configured for ${this.routingPolicy.id} version ${this.routingPolicy.version} with ${this.routingPolicy.shardCount} shards`,
+          `Ledger ${verified.ledgerId} epoch ${epochNumber} history does not match its signed routing policy`,
         );
       }
-      const signedRoutingEpoch = this.routingEpochs.get(verified.ledgerId);
-      if (signedRoutingEpoch !== undefined && !routingPoliciesEqual(verified.routingPolicy, signedRoutingEpoch.routingPolicy)) {
-        throw new G9pError("LEDGER_ROUTING_HISTORY", `Segment ${path} does not use the signed routing policy for ledger ${verified.ledgerId}`);
-      }
-      this.#recordLedgerSegmentFormat(verified.ledgerId, formatVersion);
+      this.#recordLedgerSegmentFormat(verified.ledgerId, epochNumber, formatVersion);
 
       verified.events.forEach((event, recordIndex) => {
         const recordHash = eventHashHex(event);
@@ -202,6 +264,7 @@ export class LocalLedger {
           status: "sealed",
           ledgerId: event.ledgerId,
           shardId,
+          routingEpochNumber: epochNumber,
           segmentNumber: verified.segmentNumber,
           recordIndex,
           recordHash,
@@ -229,17 +292,41 @@ export class LocalLedger {
     return ledgerId;
   }
 
-  #recordLedgerSegmentFormat(ledgerId, formatVersion) {
-    const existing = this.ledgerSegmentFormats.get(ledgerId);
+  #recordLedgerSegmentFormat(ledgerId, epochNumber, formatVersion) {
+    const key = ledgerEpochKey(ledgerId, epochNumber);
+    const existing = this.ledgerSegmentFormats.get(key);
     if (existing !== undefined && existing !== formatVersion) {
-      throw new G9pError("LEDGER_SEGMENT_FORMAT", `Ledger ${ledgerId} contains both legacy and epoch-aware segment streams`);
+      throw new G9pError("LEDGER_SEGMENT_FORMAT", `Ledger ${ledgerId} epoch ${epochNumber} contains mixed segment formats`);
     }
-    this.ledgerSegmentFormats.set(ledgerId, formatVersion);
+    this.ledgerSegmentFormats.set(key, formatVersion);
+  }
+
+  #verifyTransitionHeads() {
+    for (const [ledgerId, history] of this.routingHistory) {
+      for (let epochNumber = 1; epochNumber < history.length; epochNumber += 1) {
+        const descriptor = history[epochNumber];
+        for (const head of descriptor.previousShardHeads) {
+          const state = this.shardStates.get(stateKey(ledgerId, epochNumber - 1, head.shardId));
+          const expectedSegmentNumber = state === undefined ? null : state.nextSegmentNumber - 1;
+          const expectedSegmentHash = state?.previousSegmentHash ?? null;
+          if (head.segmentNumber !== expectedSegmentNumber) {
+            throw new G9pError("LEDGER_TRANSITION_HEAD", `Routing epoch ${epochNumber} records the wrong final segment for ${head.shardId}`);
+          }
+          const hashesMatch = head.segmentHash === null
+            ? expectedSegmentHash === null
+            : expectedSegmentHash !== null && Buffer.from(head.segmentHash, "hex").equals(Buffer.from(expectedSegmentHash));
+          if (!hashesMatch) {
+            throw new G9pError("LEDGER_TRANSITION_HEAD", `Routing epoch ${epochNumber} records the wrong final hash for ${head.shardId}`);
+          }
+        }
+      }
+    }
   }
 
   async #loadRoutingEpochs() {
     for (const ledgerDirectory of await directories(this.routingDirectory)) {
       const ledgerPath = join(this.routingDirectory, ledgerDirectory);
+      await discardProvisionalFiles(ledgerPath, /^epoch-[0-9]{12}\.g9p\.part$/u);
       const fileNames = await routingEpochFiles(ledgerPath);
       let previousEpochHash = null;
       let previousRoutingPolicy;
@@ -266,20 +353,18 @@ export class LocalLedger {
         previousEpochHash = fromHex(verified.epochHash, 32);
         previousRoutingPolicy = verified.routingPolicy;
         activeEpoch = verified;
+        this.routingEpochDirectories.set(epochStorageKey(ledgerDirectory, epochNumber), verified);
       }
 
       if (activeEpoch === undefined) continue;
-      if (activeEpoch.epochNumber !== 0) {
-        throw new G9pError("LEDGER_ROUTING_EPOCH_UNSUPPORTED", `Ledger ${ledgerId} has routing epoch ${activeEpoch.epochNumber}, but live epoch transitions are not implemented`);
-      }
-      if (!routingPoliciesEqual(activeEpoch.routingPolicy, this.routingPolicy)) {
+      if (activeEpoch.epochNumber === 0 && !routingPoliciesEqual(activeEpoch.routingPolicy, this.defaultRoutingPolicy)) {
         throw new G9pError(
           "LEDGER_ROUTING_POLICY",
-          `Ledger ${ledgerId} signed routing history uses ${activeEpoch.routingPolicy.shardCount} shards, but the service is configured for ${this.routingPolicy.shardCount} shards`,
+          `Ledger ${ledgerId} signed routing history uses ${activeEpoch.routingPolicy.shardCount} shards, but the service is configured for ${this.defaultRoutingPolicy.shardCount} shards`,
         );
       }
       this.routingEpochs.set(ledgerId, activeEpoch);
-      this.routingEpochDirectories.set(ledgerDirectory, activeEpoch);
+      this.routingHistory.set(ledgerId, fileNames.map((_, index) => this.routingEpochDirectories.get(epochStorageKey(ledgerDirectory, index))));
     }
   }
 
@@ -293,7 +378,7 @@ export class LocalLedger {
       outputPath,
       ledgerId,
       epochNumber: 0,
-      routingPolicy: this.routingPolicy,
+      routingPolicy: this.defaultRoutingPolicy,
       topologyAuthority: this.topologyAuthority,
       reason,
     });
@@ -305,28 +390,44 @@ export class LocalLedger {
       expectedPreviousEpochHash: null,
     });
     this.routingEpochs.set(ledgerId, verified);
-    this.routingEpochDirectories.set(ledgerDirectoryName(ledgerId), verified);
+    this.routingEpochDirectories.set(epochStorageKey(ledgerDirectoryName(ledgerId), 0), verified);
+    this.routingHistory.set(ledgerId, [verified]);
     return verified;
   }
 
-  ingestBatch(events) {
-    const operation = this.ingestTail.then(() => this.#ingestBatch(events));
-    this.ingestTail = operation.catch(() => {});
+  #serialize(action) {
+    const operation = this.operationTail.then(action);
+    this.operationTail = operation.catch(() => {});
     return operation;
   }
 
-  async #ingestBatch(events) {
+  acceptBatch(events) {
+    return this.#serialize(() => this.#acceptBatch(events));
+  }
+
+  drainAccepted() {
+    return this.#serialize(() => this.#drainAccepted());
+  }
+
+  transitionRouting(options) {
+    return this.#serialize(() => this.#transitionRouting(options));
+  }
+
+  ingestBatch(events) {
+    return this.#serialize(async () => {
+      const accepted = await this.#acceptBatch(events);
+      await this.#drainAccepted();
+      return accepted.map((receipt) => this.eventIndex.get(receipt.eventId) ?? receipt);
+    });
+  }
+
+  async #acceptBatch(events) {
     const validatedEvents = events.map((event) => {
       validateEvent(event);
       return event;
     });
-    for (const ledgerId of new Set(validatedEvents.map((event) => event.ledgerId))) {
-      await this.#ensureGenesisRoutingEpoch(ledgerId);
-    }
     const prepared = validatedEvents.map((event) => {
-      const routingEpoch = this.routingEpochs.get(event.ledgerId);
-      const route = routeEvent(event, routingEpoch.routingPolicy);
-      return { event, route, recordHash: eventHashHex(event) };
+      return { event, recordHash: eventHashHex(event) };
     });
 
     const requestIds = new Map();
@@ -341,16 +442,62 @@ export class LocalLedger {
       if (existing !== undefined && existing.recordHash !== item.recordHash) {
         throw new G9pError("EVENT_ID_CONFLICT", `Event ID ${item.event.eventId} already identifies different ledger content`);
       }
-    }
-
-    const uniqueNew = [];
-    const newIds = new Set();
-    for (const item of prepared) {
-      if (!this.eventIndex.has(item.event.eventId) && !newIds.has(item.event.eventId)) {
-        uniqueNew.push(item);
-        newIds.add(item.event.eventId);
+      const pending = this.pendingIndex.get(item.event.eventId);
+      if (pending !== undefined && pending.recordHash !== item.recordHash) {
+        throw new G9pError("EVENT_ID_CONFLICT", `Event ID ${item.event.eventId} already identifies different accepted content`);
       }
     }
+
+    const receipts = [];
+    const acceptedThisRequest = new Map();
+    for (const item of prepared) {
+      const sealed = this.eventIndex.get(item.event.eventId);
+      if (sealed !== undefined) {
+        receipts.push(sealed);
+        continue;
+      }
+      let pending = this.pendingIndex.get(item.event.eventId) ?? acceptedThisRequest.get(item.event.eventId);
+      if (pending === undefined) {
+        pending = await this.intake.append(item.event);
+        this.pendingIndex.set(item.event.eventId, pending);
+        acceptedThisRequest.set(item.event.eventId, pending);
+      }
+      receipts.push({
+        eventId: item.event.eventId,
+        status: "accepted",
+        ledgerId: item.event.ledgerId,
+        recordHash: item.recordHash,
+        intakeSequence: pending.sequence,
+        acceptedAt: pending.acceptedAt,
+      });
+    }
+    return receipts;
+  }
+
+  async #drainAccepted() {
+    for (const pending of [...this.pendingIndex.values()].sort((left, right) => left.sequence - right.sequence)) {
+      const sealed = this.eventIndex.get(pending.event.eventId);
+      if (sealed === undefined) continue;
+      if (sealed.recordHash !== pending.recordHash) {
+        throw new G9pError("EVENT_ID_CONFLICT", `Accepted event ID ${pending.event.eventId} conflicts with sealed history`);
+      }
+      await this.intake.remove(pending);
+      this.pendingIndex.delete(pending.event.eventId);
+    }
+
+    const pendingRecords = [...this.pendingIndex.values()].sort((left, right) => left.sequence - right.sequence);
+    for (const ledgerId of new Set(pendingRecords.map((record) => record.event.ledgerId))) {
+      await this.#ensureGenesisRoutingEpoch(ledgerId);
+    }
+    const uniqueNew = pendingRecords.map((pending) => {
+      const routingEpoch = this.routingEpochs.get(pending.event.ledgerId);
+      return {
+        event: pending.event,
+        route: routeEvent(pending.event, routingEpoch.routingPolicy),
+        recordHash: pending.recordHash,
+        pending,
+      };
+    });
 
     const groups = new Map();
     for (const item of uniqueNew) {
@@ -364,7 +511,7 @@ export class LocalLedger {
       const { ledgerId } = items[0].event;
       const { shardId } = items[0].route;
       const routingEpoch = this.routingEpochs.get(ledgerId);
-      const formatVersion = this.ledgerSegmentFormats.get(ledgerId) ?? 2;
+      const formatVersion = this.ledgerSegmentFormats.get(ledgerEpochKey(ledgerId, routingEpoch.epochNumber)) ?? 2;
       const directory = formatVersion === 1
         ? join(this.segmentDirectory, ledgerDirectoryName(ledgerId), shardId)
         : join(this.segmentDirectory, ledgerDirectoryName(ledgerId), epochDirectoryName(routingEpoch.epochNumber), shardId);
@@ -390,7 +537,7 @@ export class LocalLedger {
         },
         signer: this.signer,
       });
-      this.#recordLedgerSegmentFormat(ledgerId, state.formatVersion);
+      this.#recordLedgerSegmentFormat(ledgerId, state.epochNumber, state.formatVersion);
 
       items.forEach((item, recordIndex) => {
         this.eventIndex.set(item.event.eventId, {
@@ -398,6 +545,7 @@ export class LocalLedger {
           status: "sealed",
           ledgerId,
           shardId,
+          routingEpochNumber: state.epochNumber,
           segmentNumber: state.nextSegmentNumber,
           recordIndex,
           recordHash: item.recordHash,
@@ -415,20 +563,89 @@ export class LocalLedger {
         nextSegmentNumber: state.nextSegmentNumber + 1,
         previousSegmentHash: fromHex(result.segmentHash, 32),
       });
+
+      for (const item of items) {
+        await this.intake.remove(item.pending);
+        this.pendingIndex.delete(item.event.eventId);
+      }
+    }
+  }
+
+  async #transitionRouting({ ledgerId, shardCount, reason, expectedCurrentEpoch }) {
+    let activeEpoch = this.routingEpochs.get(ledgerId);
+    if (activeEpoch === undefined && [...this.pendingIndex.values()].some((record) => record.event.ledgerId === ledgerId)) {
+      activeEpoch = await this.#ensureGenesisRoutingEpoch(ledgerId);
+    }
+    if (activeEpoch === undefined) {
+      throw new G9pError("LEDGER_TRANSITION_LEDGER", `Ledger ${ledgerId} has no signed routing history to transition`);
+    }
+    if (!Number.isSafeInteger(expectedCurrentEpoch) || expectedCurrentEpoch < 0) {
+      throw new G9pError("LEDGER_TRANSITION_EPOCH", "expectedCurrentEpoch must be a non-negative safe integer");
+    }
+    const routingPolicy = createRoutingPolicy(shardCount);
+    if (activeEpoch.epochNumber !== expectedCurrentEpoch) {
+      if (activeEpoch.epochNumber === expectedCurrentEpoch + 1 && routingPoliciesEqual(activeEpoch.routingPolicy, routingPolicy)) {
+        return { ...activeEpoch, alreadyActive: true };
+      }
+      throw new G9pError("LEDGER_TRANSITION_EPOCH", `Ledger ${ledgerId} is at routing epoch ${activeEpoch.epochNumber}, not expected epoch ${expectedCurrentEpoch}`);
+    }
+    if (routingPoliciesEqual(activeEpoch.routingPolicy, routingPolicy)) {
+      throw new G9pError("LEDGER_TRANSITION_POLICY", "A routing transition must change the routing policy");
     }
 
-    return prepared.map((item) => this.eventIndex.get(item.event.eventId));
+    // This serialized drain is the old-epoch barrier: everything accepted before
+    // it is sealed under the old policy, and nothing later can enter the old epoch.
+    await this.#drainAccepted();
+    const previousShardHeads = [];
+    for (let index = 0; index < activeEpoch.routingPolicy.shardCount; index += 1) {
+      const shardId = `shard-${index.toString().padStart(4, "0")}`;
+      const state = this.shardStates.get(stateKey(ledgerId, activeEpoch.epochNumber, shardId));
+      previousShardHeads.push({
+        epochNumber: activeEpoch.epochNumber,
+        shardId,
+        segmentNumber: state === undefined ? null : state.nextSegmentNumber - 1,
+        segmentHash: state === undefined ? null : state.previousSegmentHash,
+      });
+    }
+
+    const epochNumber = activeEpoch.epochNumber + 1;
+    const ledgerDirectory = ledgerDirectoryName(ledgerId);
+    const outputPath = join(this.routingDirectory, ledgerDirectory, routingEpochFileName(epochNumber));
+    await writeRoutingEpoch({
+      outputPath,
+      ledgerId,
+      epochNumber,
+      routingPolicy,
+      topologyAuthority: this.topologyAuthority,
+      reason,
+      previousEpochHash: fromHex(activeEpoch.epochHash, 32),
+      previousShardHeads,
+      previousRoutingPolicy: activeEpoch.routingPolicy,
+    });
+    const verified = await verifyRoutingEpoch(outputPath, {
+      trustedKeyIds: new Set([this.topologyAuthority.keyId]),
+      requireTrustedAuthority: true,
+      expectedLedgerId: ledgerId,
+      expectedEpochNumber: epochNumber,
+      expectedPreviousEpochHash: fromHex(activeEpoch.epochHash, 32),
+      expectedPreviousRoutingPolicy: activeEpoch.routingPolicy,
+    });
+    this.routingEpochs.set(ledgerId, verified);
+    this.routingEpochDirectories.set(epochStorageKey(ledgerDirectory, epochNumber), verified);
+    this.routingHistory.set(ledgerId, [...(this.routingHistory.get(ledgerId) ?? []), verified]);
+    return { ...verified, alreadyActive: false };
   }
 
   info() {
     return {
       formatVersion: 1,
       routingEpochProtocolVersion: 1,
-      routingPolicy: this.routingPolicy,
+      routingPolicy: this.defaultRoutingPolicy,
       topologyAuthorityKeyId: this.topologyAuthority.keyId,
       knownRoutingLedgers: this.routingEpochs.size,
       signerKeyId: this.signer.keyId,
       knownEvents: this.eventIndex.size,
+      acceptedEvents: this.pendingIndex.size,
       activeShardStreams: this.shardStates.size,
     };
   }

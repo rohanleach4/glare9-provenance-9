@@ -19,6 +19,7 @@ async function main() {
   const service = createLedgerServer({
     ledger,
     apiToken: config.apiToken,
+    adminToken: config.adminToken,
     maxBatchEvents: config.maxBatchEvents,
     maxRequestBytes: config.maxRequestBytes,
   });

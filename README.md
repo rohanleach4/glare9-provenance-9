@@ -11,6 +11,8 @@ The current first iteration can:
 - Create and independently verify signed routing-epoch `.g9p` descriptors
 - Persist and verify per-ledger signed epoch-zero routing history
 - Bind new epoch-scoped version 2 segments to their signed routing descriptor
+- Retain accepted events durably before assigning their routing epoch and shard
+- Execute signed forward-only routing transitions across crash-safe barriers
 - Verify segments offline and distinguish an embedded key from a trusted key
 - Detect block mutation, signature mutation, truncation and incorrect chain links
 - Accept authenticated event batches through a separately runnable ledger service

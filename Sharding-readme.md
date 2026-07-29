@@ -39,7 +39,7 @@ Start with one shard when the expected ledger volume, verification time and oper
 
 Consider multiple shards when measured growth shows that one stream would create unacceptable ingestion contention, sealing latency, recovery time, verification time or storage-management overhead. Sharding may also be appropriate when stable organisational, geographic or regulatory boundaries need separate operational streams.
 
-Do not shard merely because the operational database is sharded, and do not use shard count as a substitute for segment sizing. Segments already keep files finite and independently verifiable. Choose an initial shard count from representative measurements and expected growth, because changing the routing policy after history exists requires an explicit forward-only routing-epoch transition. That transition is not implemented in the current iteration.
+Do not shard merely because the operational database is sharded, and do not use shard count as a substitute for segment sizing. Segments already keep files finite and independently verifiable. Choose an initial shard count from representative measurements and expected growth, because changing the routing policy after history exists requires an explicit forward-only routing-epoch transition.
 
 ## Shard routing
 
@@ -64,7 +64,7 @@ This means:
 - Event arrival time and current system load do not affect routing.
 - Changing the shard count changes assignments and is therefore a topology change, not a routine configuration edit.
 
-The ledger ingestion service applies this routing automatically. For a new ledger with no history, configure its initial count through `PROVENANCE_SHARD_COUNT`. On startup, the service compares that configured policy with every verified historical segment and refuses to start if they differ. This prevents an accidental in-place shard-count change until routing epochs and signed topology transitions are implemented.
+The ledger ingestion service applies this routing automatically. For a new ledger with no history, configure its initial count through `PROVENANCE_SHARD_COUNT`. An existing epoch-zero-only ledger must match that configured policy. Later changes must use the separately authenticated signed transition coordinator; editing configuration cannot rewrite topology history.
 
 ### Shard-planning command
 
@@ -145,6 +145,6 @@ New shard genesis commitments
 
 Historical segments remain in their original shards. Readers use the recorded topology history to follow a subject across epochs.
 
-The routing-epoch protocol closes every old epoch shard at a verified head, publishes a canonical signed epoch descriptor, and starts new epoch-scoped shard streams anchored to that descriptor. Events are never moved or rewritten. New ledgers now write epoch-aware version 2 segments whose headers authenticate the signed epoch-zero descriptor. Adopted version 1 histories remain unchanged. The service still blocks shard-count changes because the durable transition barrier and activation coordinator are not implemented.
+The routing-epoch protocol closes every old epoch shard at a verified head, publishes a canonical signed epoch descriptor, and starts new epoch-scoped shard streams anchored to that descriptor. Events are never moved or rewritten. The reference service implements this barrier using topology-neutral durable intake, a separately authenticated coordinator and restart-safe descriptor activation. New ledgers write epoch-aware version 2 segments; adopted version 1 epoch-zero histories remain unchanged and later epochs use version 2.
 
 See [`docs/G9P-routing-epochs-v1.md`](./docs/G9P-routing-epochs-v1.md) for the transition lifecycle and [`docs/G9P-format-v2.md`](./docs/G9P-format-v2.md) for the epoch-aware segment profile.

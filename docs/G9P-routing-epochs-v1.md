@@ -2,7 +2,7 @@
 
 ## Status
 
-This document specifies the approved logical routing-epoch protocol and the first executable signed epoch-descriptor container. It does not authorize live resharding. Epoch-aware segment headers and local storage are implemented, but the ledger service must continue to reject a configured routing policy that differs from existing history until durable transition coordination is implemented.
+This document specifies the approved logical routing-epoch protocol and the first executable signed epoch-descriptor container. The reference ledger now implements the single-authority transition lifecycle, while the protocol remains experimental and does not represent production authorization approval.
 
 Routing protocol version 1 is experimental. Compatibility is not promised until the project publishes a stable format policy.
 
@@ -48,7 +48,7 @@ Unknown, missing, duplicated, out-of-order and trailing frames are rejected. Fra
 - Promising global transaction atomicity across data shards.
 - Rebalancing subjects dynamically in response to current load.
 - Defining the final checkpoint or witness container.
-- Implementing a transition in the current ledger service.
+- Defining production-grade operator identity, threshold approval or customer authorization.
 
 ## Terms
 
@@ -145,7 +145,7 @@ An operator proposes the new shard count and policy version. The sharding planne
 
 ### 2. Prepare a barrier
 
-The service durably stops assigning new events to the old epoch. Events arriving during the transition are retained in an accepted queue but are not assigned to either topology yet. The current synchronous service does not have that durable accepted stage, so live transition execution must wait for it.
+The service durably stops assigning new events to the old epoch. Events arriving during the transition are retained in an accepted queue but are not assigned to either topology yet. The reference service implements this with topology-neutral durable intake and a serialized old-epoch drain barrier.
 
 ### 3. Seal and verify old heads
 
@@ -189,7 +189,7 @@ A standalone segment can still prove its bytes, producer signature, logical reco
 
 ## Storage and container direction
 
-The implemented representation includes the signed, payload-free G9P routing-epoch container and epoch-aware segment format version 2. The local ledger service persists and verifies epoch-zero descriptors before writing new version 2 segments. Create-only adoption descriptors for verified legacy version 1 history require an explicit one-time migration option; missing signed history fails closed by default. Live transition activation remains future work.
+The implemented representation includes the signed, payload-free G9P routing-epoch container, epoch-aware segment format version 2, durable intake and restart-safe transition activation. The local ledger service persists and verifies epoch descriptors and every recorded old-shard head before routing retained events under the active epoch. Create-only adoption descriptors for verified legacy version 1 history require an explicit one-time migration option; missing signed history fails closed by default.
 
 Reference local layout:
 
@@ -217,8 +217,8 @@ The first implementation may require one configured topology-authority Ed25519 k
 4. **Complete:** persist and verify signed epoch-zero routing history while retaining version 1 segment support.
 5. **Complete:** implement segment format version 2, epoch-scoped storage and version 1 compatibility.
 6. Extend the sharding CLI with transition planning and movement reports.
-7. Add a crash-safe transition coordinator and durable accepted-event queue.
-8. Add recovery, fork, missing-head and mid-transition fault tests.
+7. **Complete:** add durable accepted-event intake and the crash-safe transition coordinator and barrier.
+8. **Partial:** restart, retry and missing-head tests are implemented; add broader fork and injected mid-transition fault tests.
 9. Integrate descriptors with checkpoints and witnesses.
 
 ## Approved design decisions

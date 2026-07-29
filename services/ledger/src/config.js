@@ -15,16 +15,29 @@ function boolean(value, fallback, name) {
   throw new Error(`${name} must be true or false`);
 }
 
+function optionalToken(value, name) {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length < 16) {
+    throw new Error(`${name} must contain at least 16 characters when configured`);
+  }
+  return value;
+}
+
 export function loadLedgerConfig(environment = process.env) {
   const token = environment.PROVENANCE_API_TOKEN;
   if (typeof token !== "string" || token.length < 16) {
     throw new Error("PROVENANCE_API_TOKEN must contain at least 16 characters");
+  }
+  const adminToken = optionalToken(environment.PROVENANCE_ADMIN_TOKEN, "PROVENANCE_ADMIN_TOKEN");
+  if (adminToken === token) {
+    throw new Error("PROVENANCE_ADMIN_TOKEN must be different from PROVENANCE_API_TOKEN");
   }
 
   return Object.freeze({
     host: environment.PROVENANCE_HOST ?? "127.0.0.1",
     port: integer(environment.PROVENANCE_PORT, 8787, "PROVENANCE_PORT", { min: 1, max: 65_535 }),
     apiToken: token,
+    adminToken,
     dataDirectory: resolve(environment.PROVENANCE_DATA_DIR ?? "runtime/ledger-service"),
     shardCount: integer(environment.PROVENANCE_SHARD_COUNT, 1, "PROVENANCE_SHARD_COUNT", { min: 1, max: 65_536 }),
     adoptLegacyRoutingHistory: boolean(environment.PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY, false, "PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY"),

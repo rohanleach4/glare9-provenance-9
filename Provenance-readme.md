@@ -202,6 +202,8 @@ The current JavaScript implementation includes:
 - Signed routing-epoch descriptors with explicit topology-authority trust
 - Per-ledger signed epoch-zero routing history loaded and verified at service startup
 - Epoch-aware version 2 segments bound to the applicable signed routing descriptor
+- Crash-safe topology-neutral accepted-event intake with automatic restart recovery
+- Signed forward-only routing transitions with verified old-shard barriers and restart-safe activation
 - Create-only `.g9p.part` finalisation
 - An offline hostile-input verifier
 - A CLI demonstration and verification command
@@ -211,7 +213,7 @@ The current JavaScript implementation includes:
 - A separately deployable MySQL transactional-outbox worker
 - Leased delivery, retry, dead-lettering and sealed-receipt persistence
 
-The current implementation deliberately does not yet include production key management, live routing-epoch transitions, asynchronous intake durability, checkpoint services, witness nodes, CDC reconciliation or database projections. The local service stores a generated development signing key under its ignored data directory; this is not a production key manager.
+The current implementation deliberately does not yet include production key management, public asynchronous accepted/provisional receipt contracts, checkpoint services, witness nodes, CDC reconciliation or database projections. Routing transitions use a separate local administration credential and topology-authority key, neither of which is a production authorization system. The local service stores generated development keys under its ignored data directory; this is not a production key manager.
 
 ## Connecting a service
 

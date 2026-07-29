@@ -50,13 +50,36 @@ function retryable(error) {
   return new Set(["SEGMENT_WRITE", "COMPRESS_FAILED"]).has(error.code);
 }
 
-export function createLedgerServer({ ledger, apiToken, maxBatchEvents = 500, maxRequestBytes = 8 * 1024 * 1024, logger = console }) {
+export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvents = 500, maxRequestBytes = 8 * 1024 * 1024, logger = console }) {
   const server = createServer(async (request, response) => {
     const requestId = request.headers["x-request-id"] ?? randomUUID();
     try {
       const url = new URL(request.url, "http://ledger.local");
       if (request.method === "GET" && url.pathname === "/health") {
         sendJson(response, 200, { status: "ok" });
+        return;
+      }
+
+      if (request.method === "POST" && url.pathname === "/v1/admin/routing-transitions") {
+        if (adminToken === undefined) {
+          sendJson(response, 404, { code: "NOT_FOUND", message: "Route not found", retryable: false, requestId });
+          return;
+        }
+        if (!tokenMatches(request.headers.authorization, adminToken)) {
+          sendJson(response, 401, { code: "UNAUTHORISED", message: "A valid administration token is required", retryable: false, requestId });
+          return;
+        }
+        const body = await readJson(request, maxRequestBytes);
+        if (body?.contractVersion !== 1) {
+          throw new G9pError("INVALID_TRANSITION", "Request must contain contractVersion 1");
+        }
+        const transition = await ledger.transitionRouting({
+          ledgerId: body.ledgerId,
+          shardCount: body.shardCount,
+          reason: body.reason,
+          expectedCurrentEpoch: body.expectedCurrentEpoch,
+        });
+        sendJson(response, 200, { contractVersion: 1, transition, requestId });
         return;
       }
 

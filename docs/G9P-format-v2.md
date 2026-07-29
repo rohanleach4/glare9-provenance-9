@@ -103,8 +103,8 @@ segments/<ledger-directory>/epoch-000000000000/shard-0000/segment-000000000000.g
 
 Twelve-digit epoch, shard and segment names are storage conventions, not cryptographic identity. Readers derive authority from verified file contents and routing descriptors.
 
-Verified legacy version 1 histories remain in their original paths and continue as version 1 streams after explicit routing-history adoption. The reference service rejects a ledger containing both legacy and epoch-aware segment layouts.
+Verified legacy version 1 histories remain in their original epoch-zero paths and continue as version 1 streams after explicit routing-history adoption. A later signed epoch uses the epoch-scoped version 2 layout; formats cannot be mixed within one epoch.
 
 ## Transition boundary
 
-This format enables independently verifiable epoch-scoped segments. It does not by itself make live resharding safe. Activating a later signed epoch still requires a durable accepted-event queue, a complete old-epoch barrier, verified shard heads, create-only descriptor publication and restart-safe recovery.
+This format enables independently verifiable epoch-scoped segments. It does not by itself make live resharding safe. The reference service combines it with durable accepted-event intake, a complete old-epoch barrier, verified shard heads, create-only descriptor publication and restart-safe recovery.

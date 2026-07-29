@@ -142,6 +142,8 @@ The current suite covers:
 - Prevention of sealed-path overwrite
 - Signed routing-epoch creation, chaining, trust and hostile-input rejection
 - Ledger routing-history creation, descriptor-bound segments, legacy migration, restart, mismatch and tamper handling
+- Durable accepted-event retention, idempotency, provisional promotion, corruption rejection and restart sealing
+- Signed transition barriers, credential separation, retry idempotency, missing-head rejection and epoch activation recovery
 - Authenticated ingestion and idempotent receipt replay
 - Event-index reconstruction from verified segments
 - Connector response validation

@@ -21,3 +21,19 @@ test("legacy routing adoption is disabled by default and requires an explicit bo
     /must be true or false/u,
   );
 });
+
+test("routing administration is disabled by default and requires a separate long token", () => {
+  assert.equal(loadLedgerConfig(baseEnvironment).adminToken, undefined);
+  assert.equal(loadLedgerConfig({
+    ...baseEnvironment,
+    PROVENANCE_ADMIN_TOKEN: "a-separate-long-admin-token",
+  }).adminToken, "a-separate-long-admin-token");
+  assert.throws(
+    () => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_ADMIN_TOKEN: "too-short" }),
+    /at least 16 characters/u,
+  );
+  assert.throws(
+    () => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_ADMIN_TOKEN: baseEnvironment.PROVENANCE_API_TOKEN }),
+    /must be different/u,
+  );
+});

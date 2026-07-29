@@ -3,6 +3,15 @@ import { dirname } from "node:path";
 
 import { fail, invariant } from "./errors.js";
 
+async function syncDirectory(path) {
+  const handle = await open(path, "r");
+  try {
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
 export async function writeExclusiveAndPromote(outputPath, fileBytes, {
   errorCode = "SEALED_WRITE",
   extensionErrorCode = "SEALED_EXTENSION",
@@ -22,7 +31,9 @@ export async function writeExclusiveAndPromote(outputPath, fileBytes, {
 
     // A hard-link promotion is atomic and refuses to replace an existing sealed file.
     await link(partPath, outputPath);
+    await syncDirectory(dirname(outputPath));
     await unlink(partPath);
+    await syncDirectory(dirname(outputPath));
   } catch (error) {
     if (handle !== undefined) {
       await handle.close().catch(() => {});

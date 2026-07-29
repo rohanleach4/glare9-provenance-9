@@ -19,10 +19,10 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [ ] Replace in-memory segment batching with a bounded active-block and active-segment lifecycle.
 - [ ] Set measured block-size, segment-size and segment-age deployment defaults.
 - [ ] Demonstrate crash safety at every sealing step, including file and directory synchronisation and create-only promotion.
-- [ ] Define recovery behavior for abandoned `.g9p.part` files and interrupted writes.
+- [x] Define recovery behavior for abandoned `.g9p.part` files and interrupted writes.
 - [ ] Add a storage abstraction that preserves create-only sealing and independent verification.
 - [ ] Test backup, restore, retention and disaster recovery without rewriting sealed bytes.
-- [ ] Implement durable accepted, provisional and sealed receipt stages; do not acknowledge unretained events.
+- [ ] Complete public accepted, provisional and sealed receipt stages; durable accepted-event retention is implemented, while the public contract still returns synchronous sealed receipts.
 - [ ] Implement checkpoint publication and independently administered witness operation.
 - [ ] Define projection and index rebuild procedures entirely from verified ledger history.
 
@@ -45,7 +45,9 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Implement create-only signed routing-epoch descriptor writing and offline verification.
 - [x] Integrate signed epoch-zero routing-policy history with ledger storage and startup.
 - [x] Add epoch-aware segment version 2 headers and epoch-scoped local storage while retaining version 1 verification.
-- [ ] Implement crash-safe signed routing-transition activation with a durable accepted-event queue and complete transition barrier.
+- [x] Implement crash-safe, topology-neutral durable accepted-event intake and restart recovery.
+- [x] Implement the signed routing-transition coordinator and complete old-epoch barrier.
+- [x] Implement restart-safe transition recovery and exactly-once new-epoch activation.
 - [ ] Test hot-shard behavior, back-pressure, shard recovery and multi-shard concurrency.
 - [x] Define cross-shard correlation guarantees without implying unsupported global atomicity.
 
