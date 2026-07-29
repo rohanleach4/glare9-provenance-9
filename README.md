@@ -8,6 +8,8 @@ The current first iteration can:
 - Route events to a versioned shard policy
 - Compress records into independent Zstandard blocks
 - Seal hash-linked `.g9p` segments with Ed25519
+- Create and independently verify signed routing-epoch `.g9p` descriptors
+- Persist and verify per-ledger signed epoch-zero routing history
 - Verify segments offline and distinguish an embedded key from a trusted key
 - Detect block mutation, signature mutation, truncation and incorrect chain links
 - Accept authenticated event batches through a separately runnable ledger service
@@ -35,6 +37,12 @@ Preview deterministic sharding for a new ledger:
 npm run shard -- governance-ledger 4 model:alpha model:beta policy:credit
 ```
 
+Verify a signed routing-epoch descriptor:
+
+```bash
+npm run verify:epoch -- path/to/epoch-000001.g9p [trusted-key-id]
+```
+
 The implementation now includes an experimental ledger-ingestion service and MySQL outbox connector, but it is not production-ready. Do not use it for production evidence, credentials or signing keys.
 
 ## MySQL connector
@@ -55,6 +63,7 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`Connector-readme.md`](./Connector-readme.md) — MySQL and future connectors
 - [`Test-readme.md`](./Test-readme.md) — test and assurance strategy
 - [`docs/G9P-format-v1.md`](./docs/G9P-format-v1.md) — experimental byte-level format
+- [`docs/G9P-routing-epochs-v1.md`](./docs/G9P-routing-epochs-v1.md) — signed routing epochs and forward-only resharding protocol
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open-source licence has not yet been selected or granted. Apache 2.0 is the current adoption-first preference, subject to formal approval.

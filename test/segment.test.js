@@ -79,6 +79,7 @@ test("writer creates a sealed segment and removes its provisional name", async (
     assert.equal(verified.events.length, 4);
     assert.equal(verified.segmentHash, result.segmentHash);
     assert.equal(verified.logicalRoot, result.logicalRoot);
+    assert.deepEqual(verified.routingPolicy, createRoutingPolicy(1));
   });
 });
 

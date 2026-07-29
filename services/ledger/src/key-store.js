@@ -32,10 +32,10 @@ async function loadSigner(privateKeyPath) {
   };
 }
 
-export async function loadOrCreateLocalSigner(dataDirectory) {
+async function loadOrCreateNamedSigner(dataDirectory, name) {
   const keyDirectory = join(dataDirectory, "keys");
-  const privateKeyPath = join(keyDirectory, "segment-signing-key.pk8");
-  const publicKeyPath = join(keyDirectory, "segment-signing-key.spki");
+  const privateKeyPath = join(keyDirectory, `${name}.pk8`);
+  const publicKeyPath = join(keyDirectory, `${name}.spki`);
   await mkdir(keyDirectory, { recursive: true, mode: 0o700 });
 
   try {
@@ -56,4 +56,12 @@ export async function loadOrCreateLocalSigner(dataDirectory) {
   }
 
   return loadSigner(privateKeyPath);
+}
+
+export function loadOrCreateLocalSigner(dataDirectory) {
+  return loadOrCreateNamedSigner(dataDirectory, "segment-signing-key");
+}
+
+export function loadOrCreateLocalTopologyAuthority(dataDirectory) {
+  return loadOrCreateNamedSigner(dataDirectory, "topology-authority-key");
 }

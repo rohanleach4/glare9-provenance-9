@@ -283,6 +283,11 @@ export async function verifySegment(path, options = {}) {
     shardId: header.shardId,
     segmentNumber: header.segmentNumber,
     previousSegmentHash: header.previousSegmentHash === null ? null : toHex(header.previousSegmentHash),
+    routingPolicy: {
+      id: header.routingPolicy.id,
+      version: header.routingPolicy.version,
+      shardCount: header.routingPolicy.shardCount,
+    },
     blockCount: manifest.blockCount,
     recordCount: manifest.recordCount,
     logicalRoot: toHex(manifest.recordMerkleRoot),

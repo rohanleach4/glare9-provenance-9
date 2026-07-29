@@ -8,7 +8,7 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [ ] Complete an independent threat model covering writers, readers, connectors, storage, keys and hostile `.g9p` input.
 - [ ] Publish cross-language conformance vectors for valid and precisely invalid segments.
 - [ ] Produce an independent verifier implementation and confirm agreement on the conformance vectors.
-- [ ] Specify routing epochs, forward-only resharding and topology-transition records.
+- [x] Approve the routing-epoch, forward-only resharding and topology-transition protocol in `docs/G9P-routing-epochs-v1.md`.
 - [ ] Specify checkpoint, witness-receipt and threshold-attestation formats.
 - [ ] Specify key registration, rotation, revocation and customer-controlled event signing.
 - [ ] Decide the source-language and public package compatibility policy before the API surface grows.
@@ -41,8 +41,10 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 
 - [ ] Benchmark representative subject distributions with the shard-planning tool.
 - [ ] Define operational criteria for choosing an initial shard count.
-- [ ] Prevent an in-place shard-count change when a ledger has history but no recorded routing-epoch transition.
-- [ ] Implement signed shard-map and routing-policy history.
+- [x] Prevent an in-place shard-count change when a ledger has history but no recorded routing-epoch transition.
+- [x] Implement create-only signed routing-epoch descriptor writing and offline verification.
+- [x] Integrate signed epoch-zero routing-policy history with ledger storage and startup.
+- [ ] Add epoch-aware segment headers and activate signed routing transitions.
 - [ ] Test hot-shard behavior, back-pressure, shard recovery and multi-shard concurrency.
 - [ ] Define cross-shard correlation guarantees without implying unsupported global atomicity.
 

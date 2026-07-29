@@ -1,12 +1,15 @@
 import { invariant } from "../errors.js";
 
-export const G9P_MAGIC = Buffer.from([0x47, 0x39, 0x50, 0x0d, 0x0a, 0x1a, 0x0a, 0x01]);
+export const G9P_MAGIC_V1 = Buffer.from([0x47, 0x39, 0x50, 0x0d, 0x0a, 0x1a, 0x0a, 0x01]);
+export const G9P_MAGIC_V2 = Buffer.from([0x47, 0x39, 0x50, 0x0d, 0x0a, 0x1a, 0x0a, 0x02]);
+export const G9P_MAGIC = G9P_MAGIC_V1;
 export const FRAME_HEADER_BYTES = 8;
 
 export const FRAME_TYPES = Object.freeze({
   header: "HEAD",
   block: "BLK1",
   manifest: "MNF1",
+  routingEpoch: "RTE1",
   signature: "SIG1",
   end: "END!",
 });
@@ -30,11 +33,12 @@ export class FrameReader {
     this.maxFrameBytes = maxFrameBytes;
   }
 
-  readMagic() {
-    invariant(this.bytes.length >= G9P_MAGIC.length, "FORMAT_TRUNCATED", "File is shorter than the G9P magic header");
-    const actual = this.bytes.subarray(0, G9P_MAGIC.length);
-    invariant(actual.equals(G9P_MAGIC), "FORMAT_MAGIC", "File does not contain the G9P version 1 magic header");
-    this.offset = G9P_MAGIC.length;
+  readMagic(expectedMagic = G9P_MAGIC) {
+    invariant(this.bytes.length >= expectedMagic.length, "FORMAT_TRUNCATED", "File is shorter than the G9P magic header");
+    const actual = this.bytes.subarray(0, expectedMagic.length);
+    const version = expectedMagic[expectedMagic.length - 1];
+    invariant(actual.equals(expectedMagic), "FORMAT_MAGIC", `File does not contain the G9P version ${version} magic header`);
+    this.offset = expectedMagic.length;
   }
 
   remaining() {

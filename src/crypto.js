@@ -68,11 +68,19 @@ export function generateSigner() {
 }
 
 export function signCommitment(privateKey, commitmentBytes) {
-  const message = domainHash("segment-signature-v1", commitmentBytes);
+  return signDomainCommitment(privateKey, "segment-signature-v1", commitmentBytes);
+}
+
+export function signDomainCommitment(privateKey, domain, commitmentBytes) {
+  const message = domainHash(domain, commitmentBytes);
   return cryptoSign(null, message, privateKey);
 }
 
 export function verifyCommitment(publicKey, commitmentBytes, signature) {
-  const message = domainHash("segment-signature-v1", commitmentBytes);
+  return verifyDomainCommitment(publicKey, "segment-signature-v1", commitmentBytes, signature);
+}
+
+export function verifyDomainCommitment(publicKey, domain, commitmentBytes, signature) {
+  const message = domainHash(domain, commitmentBytes);
   return cryptoVerify(null, message, publicKey, signature);
 }

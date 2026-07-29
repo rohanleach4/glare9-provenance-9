@@ -1,15 +1,20 @@
 import { loadLedgerConfig } from "./config.js";
-import { loadOrCreateLocalSigner } from "./key-store.js";
+import { loadOrCreateLocalSigner, loadOrCreateLocalTopologyAuthority } from "./key-store.js";
 import { LocalLedger } from "./local-ledger.js";
 import { createLedgerServer } from "./server.js";
 
 async function main() {
   const config = loadLedgerConfig();
-  const signer = await loadOrCreateLocalSigner(config.dataDirectory);
+  const [signer, topologyAuthority] = await Promise.all([
+    loadOrCreateLocalSigner(config.dataDirectory),
+    loadOrCreateLocalTopologyAuthority(config.dataDirectory),
+  ]);
   const ledger = await new LocalLedger({
     dataDirectory: config.dataDirectory,
     signer,
+    topologyAuthority,
     shardCount: config.shardCount,
+    adoptLegacyRoutingHistory: config.adoptLegacyRoutingHistory,
   }).initialize();
   const service = createLedgerServer({
     ledger,
@@ -24,6 +29,7 @@ async function main() {
     host: address.address,
     port: address.port,
     signerKeyId: signer.keyId,
+    topologyAuthorityKeyId: topologyAuthority.keyId,
   }));
 
   const stop = async (signal) => {

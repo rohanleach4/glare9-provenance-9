@@ -139,6 +139,8 @@ The current suite covers:
 - Signature mutation detection
 - Truncation detection
 - Prevention of sealed-path overwrite
+- Signed routing-epoch creation, chaining, trust and hostile-input rejection
+- Ledger routing-history creation, migration, restart, mismatch and tamper handling
 - Authenticated ingestion and idempotent receipt replay
 - Event-index reconstruction from verified segments
 - Connector response validation

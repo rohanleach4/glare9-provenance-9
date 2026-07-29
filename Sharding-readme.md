@@ -64,7 +64,7 @@ This means:
 - Event arrival time and current system load do not affect routing.
 - Changing the shard count changes assignments and is therefore a topology change, not a routine configuration edit.
 
-The ledger ingestion service applies this routing automatically. For a new ledger with no history, configure its initial count through `PROVENANCE_SHARD_COUNT`. Keep the value unchanged for that ledger until routing epochs and signed topology transitions are implemented.
+The ledger ingestion service applies this routing automatically. For a new ledger with no history, configure its initial count through `PROVENANCE_SHARD_COUNT`. On startup, the service compares that configured policy with every verified historical segment and refuses to start if they differ. This prevents an accidental in-place shard-count change until routing epochs and signed topology transitions are implemented.
 
 ### Shard-planning command
 
@@ -144,3 +144,7 @@ New shard genesis commitments
 ```
 
 Historical segments remain in their original shards. Readers use the recorded topology history to follow a subject across epochs.
+
+The routing-epoch protocol closes every old epoch shard at a verified head, publishes a canonical signed epoch descriptor, and starts new epoch-scoped shard streams anchored to that descriptor. Events are never moved or rewritten. The ledger now stores and verifies signed epoch-zero routing history before writing segments; it still blocks shard-count changes because epoch-aware segments and transition execution are not implemented.
+
+See [`docs/G9P-routing-epochs-v1.md`](./docs/G9P-routing-epochs-v1.md) for the container frames, transition lifecycle, failure rules and approved design decisions.

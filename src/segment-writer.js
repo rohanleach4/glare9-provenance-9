@@ -1,6 +1,3 @@
-import { open, link, mkdir, unlink } from "node:fs/promises";
-import { dirname } from "node:path";
-
 import { encodeCanonical } from "./codec/canonical.js";
 import { compressBlock, ZSTD_PROFILE } from "./compression.js";
 import {
@@ -10,10 +7,11 @@ import {
   toHex,
 } from "./crypto.js";
 import { canonicalEventBytes, eventHash, validateEvent } from "./event.js";
-import { fail, invariant } from "./errors.js";
+import { invariant } from "./errors.js";
 import { encodeFrame, FRAME_TYPES, G9P_MAGIC } from "./format/framing.js";
 import { frameRecord } from "./format/records.js";
 import { merkleRoot } from "./merkle.js";
+import { writeExclusiveAndPromote } from "./sealed-file.js";
 import { routeEvent } from "./sharding.js";
 
 const DEFAULT_BLOCK_TARGET = 1 * 1024 * 1024;
@@ -48,30 +46,6 @@ function partitionRecords(records, targetBytes) {
 
   if (current.length > 0) blocks.push(current);
   return blocks;
-}
-
-async function writeExclusiveAndPromote(outputPath, fileBytes) {
-  invariant(outputPath.endsWith(".g9p"), "SEGMENT_EXTENSION", "Sealed segment output path must end with .g9p");
-  const partPath = `${outputPath}.part`;
-  await mkdir(dirname(outputPath), { recursive: true });
-
-  let handle;
-  try {
-    handle = await open(partPath, "wx", 0o600);
-    await handle.writeFile(fileBytes);
-    await handle.sync();
-    await handle.close();
-    handle = undefined;
-
-    // A hard-link promotion is atomic and refuses to replace an existing sealed segment.
-    await link(partPath, outputPath);
-    await unlink(partPath);
-  } catch (error) {
-    if (handle !== undefined) {
-      await handle.close().catch(() => {});
-    }
-    fail("SEGMENT_WRITE", `Could not write and promote sealed segment at ${outputPath}`, error);
-  }
 }
 
 export async function writeSegment({
@@ -182,7 +156,11 @@ export async function writeSegment({
     encodeFrame(FRAME_TYPES.end),
   ]);
 
-  await writeExclusiveAndPromote(outputPath, fileBytes);
+  await writeExclusiveAndPromote(outputPath, fileBytes, {
+    errorCode: "SEGMENT_WRITE",
+    extensionErrorCode: "SEGMENT_EXTENSION",
+    description: "sealed segment",
+  });
   const segmentHash = domainHash("segment-file-v1", fileBytes);
 
   return {

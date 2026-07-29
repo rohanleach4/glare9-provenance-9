@@ -8,6 +8,13 @@ function integer(value, fallback, name, { min, max }) {
   return parsed;
 }
 
+function boolean(value, fallback, name) {
+  if (value === undefined) return fallback;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`${name} must be true or false`);
+}
+
 export function loadLedgerConfig(environment = process.env) {
   const token = environment.PROVENANCE_API_TOKEN;
   if (typeof token !== "string" || token.length < 16) {
@@ -20,6 +27,7 @@ export function loadLedgerConfig(environment = process.env) {
     apiToken: token,
     dataDirectory: resolve(environment.PROVENANCE_DATA_DIR ?? "runtime/ledger-service"),
     shardCount: integer(environment.PROVENANCE_SHARD_COUNT, 1, "PROVENANCE_SHARD_COUNT", { min: 1, max: 65_536 }),
+    adoptLegacyRoutingHistory: boolean(environment.PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY, false, "PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY"),
     maxBatchEvents: integer(environment.PROVENANCE_MAX_BATCH_EVENTS, 500, "PROVENANCE_MAX_BATCH_EVENTS", { min: 1, max: 10_000 }),
     maxRequestBytes: integer(environment.PROVENANCE_MAX_REQUEST_BYTES, 8 * 1024 * 1024, "PROVENANCE_MAX_REQUEST_BYTES", { min: 1024, max: 64 * 1024 * 1024 }),
   });
