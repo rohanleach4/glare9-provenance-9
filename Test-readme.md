@@ -1,4 +1,4 @@
-# Glare•9 Provenance — Testing
+# Glare•9 Provenance: Testing
 
 ## Current status
 

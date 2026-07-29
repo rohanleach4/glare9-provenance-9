@@ -20,6 +20,7 @@
   "scripts": {
     "demo": "node src/cli/g9p.js demo",
     "verify": "node src/cli/g9p.js verify",
+    "shard": "node src/cli/g9p.js shard",
     "start:ledger": "npm run start --workspace=@glare9/provenance-ledger-service",
     "start:connector:mysql": "npm run start --workspace=@glare9/provenance-connector-mysql",
     "test": "node --test test/*.test.js",

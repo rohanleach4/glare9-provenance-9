@@ -3,6 +3,7 @@ export { domainHash, generateSigner, publicKeyId, toHex, fromHex } from "./crypt
 export { canonicalEventBytes, decodeEvent, eventHash, eventHashHex, validateEvent } from "./event.js";
 export { G9pError } from "./errors.js";
 export { merkleRoot } from "./merkle.js";
+export { planShardAssignments } from "./shard-planner.js";
 export { createRoutingPolicy, routeEvent, ROUTING_POLICY_ID } from "./sharding.js";
 export { writeSegment } from "./segment-writer.js";
 export { verifySegment, verifierLimits } from "./segment-verifier.js";

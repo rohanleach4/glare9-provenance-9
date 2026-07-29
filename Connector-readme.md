@@ -1,4 +1,4 @@
-# Glare•9 Provenance — Connectors
+# Glare•9 Provenance: Connectors
 
 ## Purpose
 

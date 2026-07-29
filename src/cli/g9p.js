@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import {
   createRoutingPolicy,
   generateSigner,
+  planShardAssignments,
   verifySegment,
   writeSegment,
 } from "../index.js";
@@ -17,10 +18,12 @@ function usage() {
 Usage:
   npm run demo -- [output-directory]
   npm run verify -- <segment.g9p> [trusted-key-id]
+  npm run shard -- <ledger-id> <shard-count> <subject> [subject ...]
 
 Commands:
   demo    Create and verify a demonstration .g9p segment
   verify  Independently verify a sealed .g9p segment
+  shard   Preview deterministic subject-to-shard assignments
 `);
 }
 
@@ -130,10 +133,17 @@ async function verify(pathArgument, trustedKeyId) {
   console.log(JSON.stringify(result, null, 2));
 }
 
+function shard(ledgerId, shardCountArgument, subjects) {
+  const shardCount = Number(shardCountArgument);
+  const result = planShardAssignments({ ledgerId, shardCount, subjects });
+  console.log(JSON.stringify(result, null, 2));
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "demo") return demo(args[0]);
   if (command === "verify") return verify(args[0], args[1]);
+  if (command === "shard") return shard(args[0], args[1], args.slice(2));
   usage();
   if (command !== undefined) process.exitCode = 2;
 }

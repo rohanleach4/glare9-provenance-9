@@ -1,4 +1,4 @@
-# Glare•9 Provenance — Sharding
+# Glare•9 Provenance: Sharding
 
 ## Purpose
 
@@ -33,6 +33,14 @@ Each ledger record is cryptographically hashed and committed in order. Every com
 
 Each shard continues to receive records through an active segment. When that segment reaches a defined boundary, such as a size or time limit, it is sealed, verified and retained in protected storage as a permanent part of the shard. New records are written to the shard's next segment, while sealed segments remain available for auditing and verification.
 
+## When to shard
+
+Start with one shard when the expected ledger volume, verification time and operational load fit comfortably within one ordered stream. A single shard is easier to operate and avoids unnecessary cross-shard coordination.
+
+Consider multiple shards when measured growth shows that one stream would create unacceptable ingestion contention, sealing latency, recovery time, verification time or storage-management overhead. Sharding may also be appropriate when stable organisational, geographic or regulatory boundaries need separate operational streams.
+
+Do not shard merely because the operational database is sharded, and do not use shard count as a substitute for segment sizing. Segments already keep files finite and independently verifiable. Choose an initial shard count from representative measurements and expected growth, because changing the routing policy after history exists requires an explicit forward-only routing-epoch transition. That transition is not implemented in the current iteration.
+
 ## Shard routing
 
 Routing must be deterministic and versioned. Candidate routing keys include:
@@ -44,6 +52,37 @@ Routing must be deterministic and versioned. Candidate routing keys include:
 - A stable hash of a composite identity
 
 The selected routing policy must prevent one subject's ordered history from moving between shards without an explicit transition record.
+
+## How sharding is done in the current iteration
+
+The current routing policy is `subject-sha256-v1`. It hashes the ledger identifier and stable subject identifier with the G9P `shard-route-v1` domain, reads the first unsigned 64 bits of that commitment and applies modulo `shardCount`. The result is formatted as `shard-0000`, `shard-0001` and so on.
+
+This means:
+
+- The same ledger, subject and routing policy always produce the same shard.
+- Different ledgers may route the same subject text differently.
+- Event arrival time and current system load do not affect routing.
+- Changing the shard count changes assignments and is therefore a topology change, not a routine configuration edit.
+
+The ledger ingestion service applies this routing automatically. For a new ledger with no history, configure its initial count through `PROVENANCE_SHARD_COUNT`. Keep the value unchanged for that ledger until routing epochs and signed topology transitions are implemented.
+
+### Shard-planning command
+
+Use the command-line planner to preview assignments before choosing the initial shard count:
+
+```bash
+npm run shard -- <ledger-id> <shard-count> <subject> [subject ...]
+```
+
+For example:
+
+```bash
+npm run shard -- governance-ledger 4 model:alpha model:beta policy:credit
+```
+
+The command returns JSON containing the versioned routing policy, each subject's assigned shard and a distribution summary for populated shards. It uses the same reusable routing code as the ledger service, so the planning result matches ingestion when the ledger identifier, subject and policy are identical.
+
+The planner is read-only. It does not create segments, move records, edit service configuration or reshard existing history. Its reusable `planShardAssignments` API is intended to support a later administrative interface.
 
 ## Segment lifecycle
 

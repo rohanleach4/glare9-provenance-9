@@ -29,6 +29,12 @@ Verify a segment:
 npm run verify -- path/to/segment.g9p
 ```
 
+Preview deterministic sharding for a new ledger:
+
+```bash
+npm run shard -- governance-ledger 4 model:alpha model:beta policy:credit
+```
+
 The implementation now includes an experimental ledger-ingestion service and MySQL outbox connector, but it is not production-ready. Do not use it for production evidence, credentials or signing keys.
 
 ## MySQL connector
@@ -49,5 +55,6 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`Connector-readme.md`](./Connector-readme.md) — MySQL and future connectors
 - [`Test-readme.md`](./Test-readme.md) — test and assurance strategy
 - [`docs/G9P-format-v1.md`](./docs/G9P-format-v1.md) — experimental byte-level format
+- [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open-source licence has not yet been selected or granted. Apache 2.0 is the current adoption-first preference, subject to formal approval.
