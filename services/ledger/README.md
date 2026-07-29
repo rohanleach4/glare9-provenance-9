@@ -32,7 +32,7 @@ POST /v1/events:batch
 
 The configured `PROVENANCE_SHARD_COUNT` must match the routing policy recorded in every existing segment. The service refuses startup on a mismatch because routing-epoch transitions are not implemented yet.
 
-Before writing a ledger's first segment, the service creates a signed epoch-zero descriptor under `routing/<ledger-directory>/epoch-000000000000.g9p`. Startup verifies that descriptor with the local topology-authority identity and derives the ledger's permitted routing policy from it.
+Before writing a ledger's first segment, the service creates a signed epoch-zero descriptor under `routing/<ledger-directory>/epoch-000000000000.g9p`. Startup verifies that descriptor with the local topology-authority identity and derives the ledger's permitted routing policy from it. New ledgers store epoch-aware version 2 segments under `segments/<ledger-directory>/epoch-000000000000/shard-0000/`; every segment authenticates the epoch number and exact descriptor hash.
 
 Legacy version 1 history without a descriptor fails closed by default. For one reviewed migration startup, set `PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY=true` to create an epoch-zero adoption descriptor after all existing segments pass verification. Disable the option again after migration. Sealed segment bytes are never changed.
 
@@ -43,4 +43,4 @@ Legacy version 1 history without a descriptor fails closed by default. For one r
 - The local signing key is not backed by a KMS or HSM.
 - The local topology-authority key is not backed by a KMS, HSM or customer approval policy.
 - Existing history is expected to use the current local signer.
-- Epoch-aware segment headers, live routing transitions, checkpoints and witnesses are not implemented.
+- Live routing-transition coordination, checkpoints and witnesses are not implemented.

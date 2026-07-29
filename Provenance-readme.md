@@ -201,6 +201,7 @@ The current JavaScript implementation includes:
 - Exact-file segment hashes and previous-segment links
 - Signed routing-epoch descriptors with explicit topology-authority trust
 - Per-ledger signed epoch-zero routing history loaded and verified at service startup
+- Epoch-aware version 2 segments bound to the applicable signed routing descriptor
 - Create-only `.g9p.part` finalisation
 - An offline hostile-input verifier
 - A CLI demonstration and verification command

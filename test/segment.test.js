@@ -47,9 +47,10 @@ async function createSegment(directory, overrides = {}) {
   const result = await writeSegment({
     outputPath: path,
     events: overrides.events ?? events(),
-    routingPolicy: createRoutingPolicy(1),
+    routingPolicy: overrides.routingPolicy ?? createRoutingPolicy(1),
     segmentNumber: overrides.segmentNumber ?? 0,
     previousSegmentHash: overrides.previousSegmentHash ?? null,
+    routingEpoch: overrides.routingEpoch ?? null,
     signer,
     createdAt: fixedTime,
     blockTargetBytes: 1024,
@@ -80,6 +81,59 @@ test("writer creates a sealed segment and removes its provisional name", async (
     assert.equal(verified.segmentHash, result.segmentHash);
     assert.equal(verified.logicalRoot, result.logicalRoot);
     assert.deepEqual(verified.routingPolicy, createRoutingPolicy(1));
+    assert.equal(verified.routingEpochNumber, null);
+    assert.equal(verified.routingEpochHash, null);
+  });
+});
+
+test("version 2 segments authenticate their routing epoch descriptor", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    const epochHash = Buffer.alloc(32, 0xa5);
+    const { path, result, signer } = await createSegment(directory, {
+      routingEpoch: { epochNumber: 0, epochHash },
+    });
+    const bytes = await readFile(path);
+    assert.equal(bytes[7], 0x02);
+    assert.equal(bytes.toString("ascii", 8, 12), "HED2");
+
+    const verified = await verifySegment(path, {
+      trustedKeyIds: [signer.keyId],
+      requireTrustedSigner: true,
+      expectedRoutingEpochNumber: 0,
+      expectedRoutingEpochHash: epochHash,
+    });
+    assert.equal(result.formatVersion, 2);
+    assert.equal(verified.formatVersion, 2);
+    assert.equal(verified.routingEpochNumber, 0);
+    assert.equal(verified.routingEpochHash, "a5".repeat(32));
+
+    await assert.rejects(
+      verifySegment(path, { expectedRoutingEpochHash: Buffer.alloc(32, 0x5a) }),
+      (error) => error.code === "VERIFY_ROUTING_EPOCH",
+    );
+  });
+});
+
+test("version 2 segments chain within one epoch-scoped shard", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    const signer = generateSigner();
+    const routingEpoch = { epochNumber: 3, epochHash: Buffer.alloc(32, 3) };
+    const first = await createSegment(directory, { signer, routingEpoch });
+    const second = await createSegment(directory, {
+      signer,
+      routingEpoch,
+      path: join(directory, "segment-000001.g9p"),
+      segmentNumber: 1,
+      previousSegmentHash: fromHex(first.result.segmentHash, 32),
+      events: events(2),
+    });
+    const verified = await verifySegment(second.path, {
+      expectedPreviousSegmentHash: fromHex(first.result.segmentHash, 32),
+      expectedRoutingEpochNumber: 3,
+      expectedRoutingEpochHash: routingEpoch.epochHash,
+    });
+    assert.equal(verified.previousSegmentHash, first.result.segmentHash);
+    assert.equal(verified.routingEpochNumber, 3);
   });
 });
 

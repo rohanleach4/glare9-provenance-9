@@ -3,12 +3,13 @@ import { compressBlock, ZSTD_PROFILE } from "./compression.js";
 import {
   domainHash,
   publicKeyId,
+  signDomainCommitment,
   signCommitment,
   toHex,
 } from "./crypto.js";
 import { canonicalEventBytes, eventHash, validateEvent } from "./event.js";
 import { invariant } from "./errors.js";
-import { encodeFrame, FRAME_TYPES, G9P_MAGIC } from "./format/framing.js";
+import { encodeFrame, FRAME_TYPES, G9P_MAGIC, G9P_MAGIC_V2 } from "./format/framing.js";
 import { frameRecord } from "./format/records.js";
 import { merkleRoot } from "./merkle.js";
 import { writeExclusiveAndPromote } from "./sealed-file.js";
@@ -54,6 +55,7 @@ export async function writeSegment({
   routingPolicy,
   segmentNumber,
   previousSegmentHash = null,
+  routingEpoch = null,
   signer,
   createdAt = new Date().toISOString(),
   blockTargetBytes = DEFAULT_BLOCK_TARGET,
@@ -70,6 +72,31 @@ export async function writeSegment({
   if (previousSegmentHash !== null) {
     invariant(previousSegmentHash instanceof Uint8Array && previousSegmentHash.byteLength === 32, "SEGMENT_PREVIOUS_HASH", "previousSegmentHash must be null or a 32-byte hash");
   }
+  if (routingEpoch !== null) {
+    invariant(Number.isSafeInteger(routingEpoch?.epochNumber) && routingEpoch.epochNumber >= 0, "SEGMENT_ROUTING_EPOCH", "routingEpoch.epochNumber must be a non-negative safe integer");
+    invariant(routingEpoch.epochHash instanceof Uint8Array && routingEpoch.epochHash.byteLength === 32, "SEGMENT_ROUTING_EPOCH", "routingEpoch.epochHash must contain 32 bytes");
+  }
+
+  const formatVersion = routingEpoch === null ? 1 : 2;
+  const profile = formatVersion === 1
+    ? {
+        magic: G9P_MAGIC,
+        headerFrame: FRAME_TYPES.header,
+        manifestFrame: FRAME_TYPES.manifest,
+        headerHashDomain: "header-payload-v1",
+        blockHashDomain: "block-payload-v1",
+        signatureDomain: "segment-signature-v1",
+        fileHashDomain: "segment-file-v1",
+      }
+    : {
+        magic: G9P_MAGIC_V2,
+        headerFrame: FRAME_TYPES.headerV2,
+        manifestFrame: FRAME_TYPES.manifestV2,
+        headerHashDomain: "header-payload-v2",
+        blockHashDomain: "block-payload-v2",
+        signatureDomain: "segment-signature-v2",
+        fileHashDomain: "segment-file-v2",
+      };
 
   const prepared = events.map((event) => {
     validateEvent(event);
@@ -88,17 +115,21 @@ export async function writeSegment({
 
   const header = {
     kind: "g9p-segment",
-    formatVersion: 1,
+    formatVersion,
     ledgerId,
     shardId,
     segmentNumber,
     createdAt,
     previousSegmentHash: previousSegmentHash === null ? null : hashBytes(previousSegmentHash),
+    ...(routingEpoch === null ? {} : {
+      routingEpochNumber: routingEpoch.epochNumber,
+      routingEpochHash: hashBytes(routingEpoch.epochHash),
+    }),
     routingPolicy,
     compression: ZSTD_PROFILE,
   };
   const headerPayload = encodeCanonical(header);
-  const headerFrame = encodeFrame(FRAME_TYPES.header, headerPayload);
+  const headerFrame = encodeFrame(profile.headerFrame, headerPayload);
 
   const recordBlocks = partitionRecords(prepared, blockTargetBytes);
   let firstRecordIndex = 0;
@@ -119,7 +150,7 @@ export async function writeSegment({
       blockIndex,
       firstRecordIndex,
       recordCount: records.length,
-      payloadHash: hashBytes(domainHash("block-payload-v1", payload)),
+      payloadHash: hashBytes(domainHash(profile.blockHashDomain, payload)),
     };
     firstRecordIndex += records.length;
     return { frame: encodeFrame(FRAME_TYPES.block, payload), commitment };
@@ -127,8 +158,8 @@ export async function writeSegment({
 
   const manifest = {
     kind: "g9p-segment-manifest",
-    manifestVersion: 1,
-    headerHash: hashBytes(domainHash("header-payload-v1", headerPayload)),
+    manifestVersion: formatVersion,
+    headerHash: hashBytes(domainHash(profile.headerHashDomain, headerPayload)),
     recordCount: prepared.length,
     blockCount: encodedBlocks.length,
     recordMerkleRoot: hashBytes(merkleRoot(prepared.map((record) => record.hash))),
@@ -140,7 +171,9 @@ export async function writeSegment({
     },
   };
   const manifestPayload = encodeCanonical(manifest);
-  const signature = signCommitment(signer.privateKey, manifestPayload);
+  const signature = formatVersion === 1
+    ? signCommitment(signer.privateKey, manifestPayload)
+    : signDomainCommitment(signer.privateKey, profile.signatureDomain, manifestPayload);
   const signaturePayload = encodeCanonical({
     algorithm: signer.algorithm,
     keyId: signer.keyId,
@@ -148,10 +181,10 @@ export async function writeSegment({
   });
 
   const fileBytes = Buffer.concat([
-    G9P_MAGIC,
+    profile.magic,
     headerFrame,
     ...encodedBlocks.map((block) => block.frame),
-    encodeFrame(FRAME_TYPES.manifest, manifestPayload),
+    encodeFrame(profile.manifestFrame, manifestPayload),
     encodeFrame(FRAME_TYPES.signature, signaturePayload),
     encodeFrame(FRAME_TYPES.end),
   ]);
@@ -161,13 +194,16 @@ export async function writeSegment({
     extensionErrorCode: "SEGMENT_EXTENSION",
     description: "sealed segment",
   });
-  const segmentHash = domainHash("segment-file-v1", fileBytes);
+  const segmentHash = domainHash(profile.fileHashDomain, fileBytes);
 
   return {
     outputPath,
+    formatVersion,
     ledgerId,
     shardId,
     segmentNumber,
+    routingEpochNumber: routingEpoch?.epochNumber ?? null,
+    routingEpochHash: routingEpoch === null ? null : toHex(routingEpoch.epochHash),
     blockCount: encodedBlocks.length,
     recordCount: prepared.length,
     logicalRoot: toHex(manifest.recordMerkleRoot),

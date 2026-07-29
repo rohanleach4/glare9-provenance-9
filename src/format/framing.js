@@ -7,8 +7,10 @@ export const FRAME_HEADER_BYTES = 8;
 
 export const FRAME_TYPES = Object.freeze({
   header: "HEAD",
+  headerV2: "HED2",
   block: "BLK1",
   manifest: "MNF1",
+  manifestV2: "MNF2",
   routingEpoch: "RTE1",
   signature: "SIG1",
   end: "END!",

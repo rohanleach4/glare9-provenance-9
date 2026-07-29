@@ -1,3 +1,8 @@
+/**
+ * This is the Node.js standard cryptography library node:crypto.
+ * This has nothing to do with cryptocurrency, tokens, wallets, blockchains, or mining.
+ * No cryptocurrency mining is happening; and your electricity bill is safe. 😉
+ */
 import {
   createHash,
   createPublicKey,

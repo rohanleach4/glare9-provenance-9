@@ -145,6 +145,6 @@ New shard genesis commitments
 
 Historical segments remain in their original shards. Readers use the recorded topology history to follow a subject across epochs.
 
-The routing-epoch protocol closes every old epoch shard at a verified head, publishes a canonical signed epoch descriptor, and starts new epoch-scoped shard streams anchored to that descriptor. Events are never moved or rewritten. The ledger now stores and verifies signed epoch-zero routing history before writing segments; it still blocks shard-count changes because epoch-aware segments and transition execution are not implemented.
+The routing-epoch protocol closes every old epoch shard at a verified head, publishes a canonical signed epoch descriptor, and starts new epoch-scoped shard streams anchored to that descriptor. Events are never moved or rewritten. New ledgers now write epoch-aware version 2 segments whose headers authenticate the signed epoch-zero descriptor. Adopted version 1 histories remain unchanged. The service still blocks shard-count changes because the durable transition barrier and activation coordinator are not implemented.
 
-See [`docs/G9P-routing-epochs-v1.md`](./docs/G9P-routing-epochs-v1.md) for the container frames, transition lifecycle, failure rules and approved design decisions.
+See [`docs/G9P-routing-epochs-v1.md`](./docs/G9P-routing-epochs-v1.md) for the transition lifecycle and [`docs/G9P-format-v2.md`](./docs/G9P-format-v2.md) for the epoch-aware segment profile.

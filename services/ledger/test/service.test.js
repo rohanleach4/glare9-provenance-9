@@ -7,9 +7,11 @@ import test from "node:test";
 import {
   createRoutingPolicy,
   domainHash,
+  fromHex,
   generateSigner,
   toHex,
   verifyRoutingEpoch,
+  verifySegment,
   writeSegment,
 } from "@glare9/provenance";
 import {
@@ -41,6 +43,16 @@ function event(overrides = {}) {
 function routingEpochPath(directory, ledgerId) {
   const ledgerDirectory = toHex(domainHash("ledger-directory-v1", Buffer.from(ledgerId, "utf8")));
   return join(directory, "routing", ledgerDirectory, "epoch-000000000000.g9p");
+}
+
+function segmentPath(directory, ledgerId, { epochNumber = 0, segmentNumber = 0, legacy = false } = {}) {
+  const ledgerDirectory = toHex(domainHash("ledger-directory-v1", Buffer.from(ledgerId, "utf8")));
+  const shardDirectory = join(directory, "segments", ledgerDirectory);
+  const epochDirectory = `epoch-${epochNumber.toString().padStart(12, "0")}`;
+  const fileName = `segment-${segmentNumber.toString().padStart(12, "0")}.g9p`;
+  return legacy
+    ? join(shardDirectory, "shard-0000", fileName)
+    : join(shardDirectory, epochDirectory, "shard-0000", fileName);
 }
 
 async function writeLegacyHistory(directory, signer) {
@@ -91,17 +103,26 @@ test("ingestion service seals events and returns stable idempotent receipts", as
 });
 
 test("first ingestion creates and trusts a signed genesis routing epoch", async () => {
-  await fixture(async ({ directory, topologyAuthority, client }) => {
+  await fixture(async ({ directory, signer, topologyAuthority, client }) => {
     await client.submitBatch([event()]);
     const path = routingEpochPath(directory, "connector-test-ledger");
     assert.equal((await stat(path)).isFile(), true);
-    const verified = await verifyRoutingEpoch(path, {
+    const verifiedEpoch = await verifyRoutingEpoch(path, {
       trustedKeyIds: [topologyAuthority.keyId],
       requireTrustedAuthority: true,
       expectedLedgerId: "connector-test-ledger",
       expectedEpochNumber: 0,
     });
-    assert.equal(verified.routingPolicy.shardCount, 1);
+    assert.equal(verifiedEpoch.routingPolicy.shardCount, 1);
+
+    const verifiedSegment = await verifySegment(segmentPath(directory, "connector-test-ledger"), {
+      trustedKeyIds: [signer.keyId],
+      requireTrustedSigner: true,
+      expectedRoutingEpochNumber: verifiedEpoch.epochNumber,
+      expectedRoutingEpochHash: fromHex(verifiedEpoch.epochHash, 32),
+    });
+    assert.equal(verifiedSegment.formatVersion, 2);
+    assert.equal(verifiedSegment.routingEpochHash, verifiedEpoch.epochHash);
   });
 });
 
@@ -217,6 +238,21 @@ test("startup adopts verified legacy version 1 history into a signed genesis epo
       expectedLedgerId: legacyEvent.ledgerId,
     });
     assert.match(verified.reason, /Adopt existing/u);
+
+    await ledger.ingestBatch([event({
+      ledgerId: legacyEvent.ledgerId,
+      eventId: "legacy-event-2",
+      payload: { name: "Second legacy-stream event" },
+    })]);
+    const appended = await verifySegment(segmentPath(directory, legacyEvent.ledgerId, {
+      legacy: true,
+      segmentNumber: 1,
+    }));
+    assert.equal(appended.formatVersion, 1);
+    await assert.rejects(
+      stat(segmentPath(directory, legacyEvent.ledgerId)),
+      (error) => error.code === "ENOENT",
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

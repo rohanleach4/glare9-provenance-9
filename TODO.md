@@ -40,13 +40,14 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 ## Sharding and scale
 
 - [ ] Benchmark representative subject distributions with the shard-planning tool.
-- [ ] Define operational criteria for choosing an initial shard count.
+- [x] Define operational criteria for choosing an initial shard count.
 - [x] Prevent an in-place shard-count change when a ledger has history but no recorded routing-epoch transition.
 - [x] Implement create-only signed routing-epoch descriptor writing and offline verification.
 - [x] Integrate signed epoch-zero routing-policy history with ledger storage and startup.
-- [ ] Add epoch-aware segment headers and activate signed routing transitions.
+- [x] Add epoch-aware segment version 2 headers and epoch-scoped local storage while retaining version 1 verification.
+- [ ] Implement crash-safe signed routing-transition activation with a durable accepted-event queue and complete transition barrier.
 - [ ] Test hot-shard behavior, back-pressure, shard recovery and multi-shard concurrency.
-- [ ] Define cross-shard correlation guarantees without implying unsupported global atomicity.
+- [x] Define cross-shard correlation guarantees without implying unsupported global atomicity.
 
 ## Connectors and MySQL
 
@@ -60,7 +61,7 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 ## Verification and quality
 
 - [ ] Standardise development and CI on supported Node.js and npm versions.
-- [ ] Make the aggregate test runner demonstrably fail on every child-suite failure.
+- [x] Make the aggregate test runner demonstrably fail on every child-suite failure.
 - [ ] Add automated CI checks for unit, service, connector, format and compatibility tests.
 - [ ] Set reviewed coverage expectations for security- and protocol-critical code.
 - [ ] Add property-based tests for codecs, routing, idempotency and segment invariants.

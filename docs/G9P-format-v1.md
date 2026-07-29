@@ -6,7 +6,7 @@ This document specifies the first executable Glare•9 Provenance container. It 
 
 Format version 1 is **experimental**. Compatibility is not promised until the project publishes a stable format policy. Any permanent byte-level change must update this document, the verifier and the conformance fixtures together.
 
-Signed routing-epoch descriptors use a separate container-version byte and frame profile specified in [`G9P-routing-epochs-v1.md`](./G9P-routing-epochs-v1.md). Existing version 1 segment bytes are unchanged.
+Signed routing-epoch descriptors and epoch-aware version 2 segments use container-version byte 2 with distinct first-frame profiles. They are specified in [`G9P-routing-epochs-v1.md`](./G9P-routing-epochs-v1.md) and [`G9P-format-v2.md`](./G9P-format-v2.md). Existing version 1 segment bytes are unchanged.
 
 ## Goals
 

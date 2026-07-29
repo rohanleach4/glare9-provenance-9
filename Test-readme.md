@@ -135,12 +135,13 @@ The current suite covers:
 - Provisional-to-sealed file promotion
 - Offline verification with explicit signer trust
 - Exact previous-segment linkage
+- Version 1 compatibility and epoch-aware version 2 segment linkage
 - Stored-block mutation detection
 - Signature mutation detection
 - Truncation detection
 - Prevention of sealed-path overwrite
 - Signed routing-epoch creation, chaining, trust and hostile-input rejection
-- Ledger routing-history creation, migration, restart, mismatch and tamper handling
+- Ledger routing-history creation, descriptor-bound segments, legacy migration, restart, mismatch and tamper handling
 - Authenticated ingestion and idempotent receipt replay
 - Event-index reconstruction from verified segments
 - Connector response validation

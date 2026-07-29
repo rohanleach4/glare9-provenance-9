@@ -2,7 +2,7 @@
 
 ## Status
 
-This document specifies the approved logical routing-epoch protocol and the first executable signed epoch-descriptor container. It does not authorize live resharding. The current ledger service must continue to reject a configured routing policy that differs from existing history until epoch-aware segment headers, storage and transition coordination are implemented.
+This document specifies the approved logical routing-epoch protocol and the first executable signed epoch-descriptor container. It does not authorize live resharding. Epoch-aware segment headers and local storage are implemented, but the ledger service must continue to reject a configured routing policy that differs from existing history until durable transition coordination is implemented.
 
 Routing protocol version 1 is experimental. Compatibility is not promised until the project publishes a stable format policy.
 
@@ -135,7 +135,7 @@ Every segment created under this protocol must authenticate:
 
 The first segment of an epoch-scoped shard has segment number zero and no preceding segment in that stream. Its `routingEpochHash` is its genesis anchor. Later segments link normally to the exact hash of the preceding segment in the same epoch-scoped shard.
 
-The current experimental format version 1 header has no epoch fields and rejects unknown fields. Safe epoch support therefore requires an explicitly versioned segment-header evolution. The recommended path is a new container format version rather than silently changing already-written version 1 bytes. Version 1 segments remain verifiable as epoch-zero history under an adopted migration rule.
+Experimental segment format version 2 implements this relationship using mandatory epoch fields and distinct `HED2` and `MNF2` frames. See [`G9P-format-v2.md`](./G9P-format-v2.md). Version 1 segments remain verifiable as epoch-zero history under an adopted migration rule and are never rewritten.
 
 ## Transition lifecycle
 
@@ -189,18 +189,18 @@ A standalone segment can still prove its bytes, producer signature, logical reco
 
 ## Storage and container direction
 
-The implemented representation is the signed, payload-free G9P routing-epoch container defined above. It is suitable for distribution to readers and future witnesses. The local ledger service persists and verifies epoch-zero descriptors before writing segments. Create-only adoption descriptors for verified legacy version 1 history require an explicit one-time migration option; missing signed history fails closed by default. Evolved segment headers and live transitions remain future work.
+The implemented representation includes the signed, payload-free G9P routing-epoch container and epoch-aware segment format version 2. The local ledger service persists and verifies epoch-zero descriptors before writing new version 2 segments. Create-only adoption descriptors for verified legacy version 1 history require an explicit one-time migration option; missing signed history fails closed by default. Live transition activation remains future work.
 
-Suggested local layout for discussion:
+Reference local layout:
 
 ```text
 ledger-root/
-├── routing/
+├── routing/<ledger-directory>/
 │   ├── epoch-000000000000.g9p
 │   └── epoch-000000000001.g9p
-└── segments/
-    ├── epoch-000000/shard-0000/...
-    └── epoch-000001/shard-0000/...
+└── segments/<ledger-directory>/
+    ├── epoch-000000000000/shard-0000/...
+    └── epoch-000000000001/shard-0000/...
 ```
 
 Directory layout is not authoritative. Descriptor and segment commitments establish validity.
@@ -215,7 +215,7 @@ The first implementation may require one configured topology-authority Ed25519 k
 2. **Complete:** add strict offline verification with explicit topology-authority trust.
 3. Add stable canonical valid and invalid cross-language conformance vectors.
 4. **Complete:** persist and verify signed epoch-zero routing history while retaining version 1 segment support.
-5. Settle the segment format-version migration rule and epoch-aware segment header.
+5. **Complete:** implement segment format version 2, epoch-scoped storage and version 1 compatibility.
 6. Extend the sharding CLI with transition planning and movement reports.
 7. Add a crash-safe transition coordinator and durable accepted-event queue.
 8. Add recovery, fork, missing-head and mid-transition fault tests.

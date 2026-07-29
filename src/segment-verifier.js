@@ -8,10 +8,11 @@ import {
   publicKeyId,
   toHex,
   verifyCommitment,
+  verifyDomainCommitment,
 } from "./crypto.js";
 import { decodeEvent, eventHash } from "./event.js";
 import { fail, invariant } from "./errors.js";
-import { FrameReader, FRAME_TYPES } from "./format/framing.js";
+import { FrameReader, FRAME_TYPES, G9P_MAGIC, G9P_MAGIC_V2 } from "./format/framing.js";
 import { readFramedRecords } from "./format/records.js";
 import { merkleRoot } from "./merkle.js";
 import { ROUTING_POLICY_ID, routeEvent } from "./sharding.js";
@@ -30,10 +31,10 @@ function plainObject(value, name) {
   return value;
 }
 
-function exactFields(value, fields, name) {
+function exactFields(value, fields, name, formatVersion = 1) {
   const expected = [...fields].sort();
   const actual = Object.keys(value).sort();
-  invariant(actual.length === expected.length && actual.every((field, index) => field === expected[index]), "VERIFY_FIELDS", `${name} fields do not match format version 1`);
+  invariant(actual.length === expected.length && actual.every((field, index) => field === expected[index]), "VERIFY_FIELDS", `${name} fields do not match format version ${formatVersion}`);
 }
 
 function bytesOfLength(value, length, name) {
@@ -73,9 +74,9 @@ function validateCompressionProfile(profile) {
   );
 }
 
-function validateHeader(header) {
+function validateHeader(header, formatVersion) {
   plainObject(header, "header");
-  exactFields(header, [
+  const fields = [
     "kind",
     "formatVersion",
     "ledgerId",
@@ -85,13 +86,19 @@ function validateHeader(header) {
     "previousSegmentHash",
     "routingPolicy",
     "compression",
-  ], "header");
-  invariant(header.kind === "g9p-segment" && header.formatVersion === 1, "VERIFY_FORMAT_VERSION", "Unsupported G9P segment format");
+  ];
+  if (formatVersion === 2) fields.push("routingEpochNumber", "routingEpochHash");
+  exactFields(header, fields, "header", formatVersion);
+  invariant(header.kind === "g9p-segment" && header.formatVersion === formatVersion, "VERIFY_FORMAT_VERSION", "Unsupported G9P segment format");
   invariant(typeof header.ledgerId === "string" && header.ledgerId.length > 0, "VERIFY_LEDGER", "header.ledgerId is invalid");
   invariant(typeof header.shardId === "string" && /^shard-[0-9]{4}$/u.test(header.shardId), "VERIFY_SHARD", "header.shardId is invalid");
   safeInteger(header.segmentNumber, "header.segmentNumber");
   canonicalTimestamp(header.createdAt, "header.createdAt");
   if (header.previousSegmentHash !== null) bytesOfLength(header.previousSegmentHash, 32, "header.previousSegmentHash");
+  if (formatVersion === 2) {
+    safeInteger(header.routingEpochNumber, "header.routingEpochNumber");
+    bytesOfLength(header.routingEpochHash, 32, "header.routingEpochHash");
+  }
   validateRoutingPolicy(header.routingPolicy);
   validateCompressionProfile(header.compression);
 }
@@ -108,10 +115,10 @@ function validateBlock(block, limits) {
   invariant(block.data instanceof Uint8Array && block.data.byteLength > 0, "VERIFY_BLOCK_DATA", "Compressed block data is missing");
 }
 
-function validateManifest(manifest, limits) {
+function validateManifest(manifest, limits, formatVersion) {
   plainObject(manifest, "manifest");
-  exactFields(manifest, ["kind", "manifestVersion", "headerHash", "recordCount", "blockCount", "recordMerkleRoot", "blocks", "signer"], "manifest");
-  invariant(manifest.kind === "g9p-segment-manifest" && manifest.manifestVersion === 1, "VERIFY_MANIFEST_VERSION", "Unsupported G9P manifest format");
+  exactFields(manifest, ["kind", "manifestVersion", "headerHash", "recordCount", "blockCount", "recordMerkleRoot", "blocks", "signer"], "manifest", formatVersion);
+  invariant(manifest.kind === "g9p-segment-manifest" && manifest.manifestVersion === formatVersion, "VERIFY_MANIFEST_VERSION", "Unsupported G9P manifest format");
   bytesOfLength(manifest.headerHash, 32, "manifest.headerHash");
   safeInteger(manifest.recordCount, "manifest.recordCount", { min: 1, max: limits.maxRecords });
   safeInteger(manifest.blockCount, "manifest.blockCount", { min: 1, max: limits.maxBlocks });
@@ -153,9 +160,34 @@ export async function verifySegment(path, options = {}) {
   invariant(fileStat.size <= limits.maxFileBytes, "VERIFY_FILE_LIMIT", `Segment exceeds the ${limits.maxFileBytes} byte file limit`);
   const fileBytes = await readFile(path);
 
+  const profile = fileBytes.subarray(0, G9P_MAGIC.length).equals(G9P_MAGIC)
+    ? {
+        formatVersion: 1,
+        magic: G9P_MAGIC,
+        headerFrame: FRAME_TYPES.header,
+        manifestFrame: FRAME_TYPES.manifest,
+        headerHashDomain: "header-payload-v1",
+        blockHashDomain: "block-payload-v1",
+        signatureDomain: "segment-signature-v1",
+        fileHashDomain: "segment-file-v1",
+      }
+    : fileBytes.subarray(0, G9P_MAGIC_V2.length).equals(G9P_MAGIC_V2)
+      ? {
+          formatVersion: 2,
+          magic: G9P_MAGIC_V2,
+          headerFrame: FRAME_TYPES.headerV2,
+          manifestFrame: FRAME_TYPES.manifestV2,
+          headerHashDomain: "header-payload-v2",
+          blockHashDomain: "block-payload-v2",
+          signatureDomain: "segment-signature-v2",
+          fileHashDomain: "segment-file-v2",
+        }
+      : null;
+  invariant(profile !== null, "FORMAT_MAGIC", "File does not contain a supported G9P segment magic header");
+
   const reader = new FrameReader(fileBytes, { maxFrameBytes: limits.maxFrameBytes });
-  reader.readMagic();
-  const headerFrame = reader.readFrame(FRAME_TYPES.header);
+  reader.readMagic(profile.magic);
+  const headerFrame = reader.readFrame(profile.headerFrame);
 
   const blockFrames = [];
   while (reader.peekType() === FRAME_TYPES.block) {
@@ -164,7 +196,7 @@ export async function verifySegment(path, options = {}) {
   }
   invariant(blockFrames.length > 0, "VERIFY_BLOCKS", "Segment does not contain a record block");
 
-  const manifestFrame = reader.readFrame(FRAME_TYPES.manifest);
+  const manifestFrame = reader.readFrame(profile.manifestFrame);
   const signatureFrame = reader.readFrame(FRAME_TYPES.signature);
   const endFrame = reader.readFrame(FRAME_TYPES.end);
   invariant(endFrame.payload.length === 0, "VERIFY_END_FRAME", "End frame must be empty");
@@ -175,15 +207,15 @@ export async function verifySegment(path, options = {}) {
   const manifest = decodeCanonical(manifestFrame.payload);
   const signature = decodeCanonical(signatureFrame.payload);
 
-  validateHeader(header);
+  validateHeader(header, profile.formatVersion);
   blocks.forEach((block) => validateBlock(block, limits));
-  validateManifest(manifest, limits);
+  validateManifest(manifest, limits, profile.formatVersion);
   validateSignature(signature, manifest);
 
   invariant(blocks.length === manifest.blockCount, "VERIFY_BLOCK_COUNT", "Physical block count does not match manifest");
   buffersEqual(
     manifest.headerHash,
-    domainHash("header-payload-v1", headerFrame.payload),
+    domainHash(profile.headerHashDomain, headerFrame.payload),
     "VERIFY_HEADER_HASH",
     "Header commitment does not match the stored header",
   );
@@ -196,7 +228,7 @@ export async function verifySegment(path, options = {}) {
     invariant(block.recordCount === commitment.recordCount, "VERIFY_BLOCK_RECORD_COUNT", "Block record count does not match its commitment");
     buffersEqual(
       commitment.payloadHash,
-      domainHash("block-payload-v1", blockFrames[index].payload),
+      domainHash(profile.blockHashDomain, blockFrames[index].payload),
       "VERIFY_BLOCK_HASH",
       `Block ${index} payload commitment does not match`,
     );
@@ -212,8 +244,11 @@ export async function verifySegment(path, options = {}) {
   } catch (error) {
     fail("VERIFY_PUBLIC_KEY", "Embedded Ed25519 public key could not be imported", error);
   }
+  const signatureValid = profile.formatVersion === 1
+    ? verifyCommitment(publicKey, manifestFrame.payload, Buffer.from(signature.signature))
+    : verifyDomainCommitment(publicKey, profile.signatureDomain, manifestFrame.payload, Buffer.from(signature.signature));
   invariant(
-    verifyCommitment(publicKey, manifestFrame.payload, Buffer.from(signature.signature)),
+    signatureValid,
     "VERIFY_SIGNATURE",
     "Segment signature is invalid",
   );
@@ -241,6 +276,13 @@ export async function verifySegment(path, options = {}) {
   }
   if (options.expectedShardId !== undefined) {
     invariant(header.shardId === options.expectedShardId, "VERIFY_SHARD", "Segment shard ID does not match the expected shard");
+  }
+  if (options.expectedRoutingEpochNumber !== undefined) {
+    invariant(profile.formatVersion === 2 && header.routingEpochNumber === options.expectedRoutingEpochNumber, "VERIFY_ROUTING_EPOCH", "Segment routing epoch number does not match the expected epoch");
+  }
+  if (options.expectedRoutingEpochHash !== undefined) {
+    invariant(profile.formatVersion === 2, "VERIFY_ROUTING_EPOCH", "Version 1 segment does not authenticate a routing epoch");
+    buffersEqual(header.routingEpochHash, options.expectedRoutingEpochHash, "VERIFY_ROUTING_EPOCH", "Segment routing epoch hash does not match the expected descriptor");
   }
 
   const events = [];
@@ -274,15 +316,17 @@ export async function verifySegment(path, options = {}) {
     "Record Merkle root does not match decoded records",
   );
 
-  const segmentHash = domainHash("segment-file-v1", fileBytes);
+  const segmentHash = domainHash(profile.fileHashDomain, fileBytes);
   return {
     valid: true,
     path,
-    formatVersion: header.formatVersion,
+    formatVersion: profile.formatVersion,
     ledgerId: header.ledgerId,
     shardId: header.shardId,
     segmentNumber: header.segmentNumber,
     previousSegmentHash: header.previousSegmentHash === null ? null : toHex(header.previousSegmentHash),
+    routingEpochNumber: profile.formatVersion === 2 ? header.routingEpochNumber : null,
+    routingEpochHash: profile.formatVersion === 2 ? toHex(header.routingEpochHash) : null,
     routingPolicy: {
       id: header.routingPolicy.id,
       version: header.routingPolicy.version,

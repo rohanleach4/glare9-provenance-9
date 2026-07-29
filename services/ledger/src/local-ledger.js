@@ -20,8 +20,8 @@ function ledgerDirectoryName(ledgerId) {
   return toHex(domainHash("ledger-directory-v1", Buffer.from(ledgerId, "utf8")));
 }
 
-function stateKey(ledgerId, shardId) {
-  return `${ledgerId}\0${shardId}`;
+function stateKey(ledgerId, epochNumber, shardId) {
+  return `${ledgerId}\0${epochNumber}\0${shardId}`;
 }
 
 function segmentFileName(segmentNumber) {
@@ -30,6 +30,10 @@ function segmentFileName(segmentNumber) {
 
 function routingEpochFileName(epochNumber) {
   return `epoch-${epochNumber.toString().padStart(12, "0")}.g9p`;
+}
+
+function epochDirectoryName(epochNumber) {
+  return `epoch-${epochNumber.toString().padStart(12, "0")}`;
 }
 
 function routingPoliciesEqual(left, right) {
@@ -92,6 +96,8 @@ export class LocalLedger {
     this.adoptLegacyRoutingHistory = adoptLegacyRoutingHistory;
     this.routingPolicy = createRoutingPolicy(shardCount);
     this.routingEpochs = new Map();
+    this.routingEpochDirectories = new Map();
+    this.ledgerSegmentFormats = new Map();
     this.eventIndex = new Map();
     this.shardStates = new Map();
     this.ingestTail = Promise.resolve();
@@ -104,69 +110,32 @@ export class LocalLedger {
     const historicalLedgers = new Set();
     for (const ledgerDirectory of await directories(this.segmentDirectory)) {
       const ledgerPath = join(this.segmentDirectory, ledgerDirectory);
-      for (const shardId of await directories(ledgerPath)) {
-        const shardPath = join(ledgerPath, shardId);
-        let previousSegmentHash = null;
-        let ledgerId;
-        let expectedSegmentNumber = 0;
-
-        for (const fileName of await files(shardPath)) {
-          const path = join(shardPath, fileName);
-          const verified = await verifySegment(path, {
-            trustedKeyIds: new Set([this.signer.keyId]),
-            requireTrustedSigner: true,
-            expectedPreviousSegmentHash: previousSegmentHash,
-            expectedShardId: shardId,
-          });
-          if (verified.segmentNumber !== expectedSegmentNumber) {
-            throw new G9pError("LEDGER_SEGMENT_SEQUENCE", `Expected segment ${expectedSegmentNumber} in ${shardPath} but found ${verified.segmentNumber}`);
-          }
-          ledgerId ??= verified.ledgerId;
-          if (verified.ledgerId !== ledgerId || ledgerDirectoryName(verified.ledgerId) !== ledgerDirectory) {
-            throw new G9pError("LEDGER_DIRECTORY", `Segment ${path} is stored under the wrong ledger directory`);
-          }
-          if (!routingPoliciesEqual(verified.routingPolicy, this.routingPolicy)) {
-            throw new G9pError(
-              "LEDGER_ROUTING_POLICY",
-              `Ledger ${verified.ledgerId} history uses routing policy ${verified.routingPolicy.id} version ${verified.routingPolicy.version} with ${verified.routingPolicy.shardCount} shards, but the service is configured for ${this.routingPolicy.id} version ${this.routingPolicy.version} with ${this.routingPolicy.shardCount} shards`,
-            );
-          }
-          const routingEpoch = this.routingEpochs.get(verified.ledgerId);
-          if (routingEpoch !== undefined && !routingPoliciesEqual(verified.routingPolicy, routingEpoch.routingPolicy)) {
-            throw new G9pError("LEDGER_ROUTING_HISTORY", `Segment ${path} does not use the signed routing policy for ledger ${verified.ledgerId}`);
-          }
-
-          verified.events.forEach((event, recordIndex) => {
-            const recordHash = eventHashHex(event);
-            const existing = this.eventIndex.get(event.eventId);
-            if (existing !== undefined && existing.recordHash !== recordHash) {
-              throw new G9pError("EVENT_ID_CONFLICT", `Event ID ${event.eventId} has conflicting historical content`);
-            }
-            this.eventIndex.set(event.eventId, {
-              eventId: event.eventId,
-              status: "sealed",
-              ledgerId: event.ledgerId,
-              shardId,
-              segmentNumber: verified.segmentNumber,
-              recordIndex,
-              recordHash,
-              segmentHash: verified.segmentHash,
-              signerKeyId: verified.signerKeyId,
-            });
-          });
-
-          previousSegmentHash = fromHex(verified.segmentHash, 32);
-          expectedSegmentNumber += 1;
+      const childDirectories = await directories(ledgerPath);
+      for (const shardId of childDirectories.filter((name) => /^shard-[0-9]{4}$/u.test(name))) {
+        const ledgerId = await this.#loadShardHistory({
+          ledgerDirectory,
+          shardId,
+          shardPath: join(ledgerPath, shardId),
+          routingEpoch: null,
+        });
+        if (ledgerId !== undefined) historicalLedgers.add(ledgerId);
+      }
+      for (const epochDirectory of childDirectories.filter((name) => /^epoch-[0-9]{12}$/u.test(name))) {
+        const epochNumber = Number(epochDirectory.slice(6));
+        const routingEpoch = this.routingEpochDirectories.get(ledgerDirectory);
+        if (routingEpoch === undefined || routingEpoch.epochNumber !== epochNumber) {
+          throw new G9pError("LEDGER_ROUTING_EPOCH", `Segment directory ${epochDirectory} has no matching active signed routing epoch`);
         }
-
-        if (ledgerId !== undefined) {
-          historicalLedgers.add(ledgerId);
-          this.shardStates.set(stateKey(ledgerId, shardId), {
-            ledgerId,
+        const epochPath = join(ledgerPath, epochDirectory);
+        for (const shardId of await directories(epochPath)) {
+          if (!/^shard-[0-9]{4}$/u.test(shardId)) continue;
+          const ledgerId = await this.#loadShardHistory({
+            ledgerDirectory,
             shardId,
-            nextSegmentNumber: expectedSegmentNumber,
-            previousSegmentHash,
+            shardPath: join(epochPath, shardId),
+            routingEpoch,
           });
+          if (ledgerId !== undefined) historicalLedgers.add(ledgerId);
         }
       }
     }
@@ -180,6 +149,92 @@ export class LocalLedger {
       await this.#ensureGenesisRoutingEpoch(ledgerId, "Adopt existing G9P format version 1 history as routing epoch zero");
     }
     return this;
+  }
+
+  async #loadShardHistory({ ledgerDirectory, shardId, shardPath, routingEpoch }) {
+    let previousSegmentHash = null;
+    let ledgerId;
+    let expectedSegmentNumber = 0;
+    const formatVersion = routingEpoch === null ? 1 : 2;
+
+    for (const fileName of await files(shardPath)) {
+      const path = join(shardPath, fileName);
+      const verified = await verifySegment(path, {
+        trustedKeyIds: new Set([this.signer.keyId]),
+        requireTrustedSigner: true,
+        expectedPreviousSegmentHash: previousSegmentHash,
+        expectedShardId: shardId,
+        ...(routingEpoch === null ? {} : {
+          expectedRoutingEpochNumber: routingEpoch.epochNumber,
+          expectedRoutingEpochHash: fromHex(routingEpoch.epochHash, 32),
+        }),
+      });
+      if (verified.formatVersion !== formatVersion) {
+        throw new G9pError("LEDGER_SEGMENT_FORMAT", `Segment ${path} uses format version ${verified.formatVersion} but its storage path requires version ${formatVersion}`);
+      }
+      if (verified.segmentNumber !== expectedSegmentNumber) {
+        throw new G9pError("LEDGER_SEGMENT_SEQUENCE", `Expected segment ${expectedSegmentNumber} in ${shardPath} but found ${verified.segmentNumber}`);
+      }
+      ledgerId ??= verified.ledgerId;
+      if (verified.ledgerId !== ledgerId || ledgerDirectoryName(verified.ledgerId) !== ledgerDirectory) {
+        throw new G9pError("LEDGER_DIRECTORY", `Segment ${path} is stored under the wrong ledger directory`);
+      }
+      if (!routingPoliciesEqual(verified.routingPolicy, this.routingPolicy)) {
+        throw new G9pError(
+          "LEDGER_ROUTING_POLICY",
+          `Ledger ${verified.ledgerId} history uses routing policy ${verified.routingPolicy.id} version ${verified.routingPolicy.version} with ${verified.routingPolicy.shardCount} shards, but the service is configured for ${this.routingPolicy.id} version ${this.routingPolicy.version} with ${this.routingPolicy.shardCount} shards`,
+        );
+      }
+      const signedRoutingEpoch = this.routingEpochs.get(verified.ledgerId);
+      if (signedRoutingEpoch !== undefined && !routingPoliciesEqual(verified.routingPolicy, signedRoutingEpoch.routingPolicy)) {
+        throw new G9pError("LEDGER_ROUTING_HISTORY", `Segment ${path} does not use the signed routing policy for ledger ${verified.ledgerId}`);
+      }
+      this.#recordLedgerSegmentFormat(verified.ledgerId, formatVersion);
+
+      verified.events.forEach((event, recordIndex) => {
+        const recordHash = eventHashHex(event);
+        const existing = this.eventIndex.get(event.eventId);
+        if (existing !== undefined && existing.recordHash !== recordHash) {
+          throw new G9pError("EVENT_ID_CONFLICT", `Event ID ${event.eventId} has conflicting historical content`);
+        }
+        this.eventIndex.set(event.eventId, {
+          eventId: event.eventId,
+          status: "sealed",
+          ledgerId: event.ledgerId,
+          shardId,
+          segmentNumber: verified.segmentNumber,
+          recordIndex,
+          recordHash,
+          segmentHash: verified.segmentHash,
+          signerKeyId: verified.signerKeyId,
+        });
+      });
+
+      previousSegmentHash = fromHex(verified.segmentHash, 32);
+      expectedSegmentNumber += 1;
+    }
+
+    if (ledgerId !== undefined) {
+      const epochNumber = routingEpoch?.epochNumber ?? 0;
+      this.shardStates.set(stateKey(ledgerId, epochNumber, shardId), {
+        ledgerId,
+        shardId,
+        epochNumber,
+        formatVersion,
+        directory: shardPath,
+        nextSegmentNumber: expectedSegmentNumber,
+        previousSegmentHash,
+      });
+    }
+    return ledgerId;
+  }
+
+  #recordLedgerSegmentFormat(ledgerId, formatVersion) {
+    const existing = this.ledgerSegmentFormats.get(ledgerId);
+    if (existing !== undefined && existing !== formatVersion) {
+      throw new G9pError("LEDGER_SEGMENT_FORMAT", `Ledger ${ledgerId} contains both legacy and epoch-aware segment streams`);
+    }
+    this.ledgerSegmentFormats.set(ledgerId, formatVersion);
   }
 
   async #loadRoutingEpochs() {
@@ -224,6 +279,7 @@ export class LocalLedger {
         );
       }
       this.routingEpochs.set(ledgerId, activeEpoch);
+      this.routingEpochDirectories.set(ledgerDirectory, activeEpoch);
     }
   }
 
@@ -249,6 +305,7 @@ export class LocalLedger {
       expectedPreviousEpochHash: null,
     });
     this.routingEpochs.set(ledgerId, verified);
+    this.routingEpochDirectories.set(ledgerDirectoryName(ledgerId), verified);
     return verified;
   }
 
@@ -297,7 +354,8 @@ export class LocalLedger {
 
     const groups = new Map();
     for (const item of uniqueNew) {
-      const key = stateKey(item.event.ledgerId, item.route.shardId);
+      const routingEpoch = this.routingEpochs.get(item.event.ledgerId);
+      const key = stateKey(item.event.ledgerId, routingEpoch.epochNumber, item.route.shardId);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(item);
     }
@@ -305,22 +363,34 @@ export class LocalLedger {
     for (const [key, items] of groups) {
       const { ledgerId } = items[0].event;
       const { shardId } = items[0].route;
+      const routingEpoch = this.routingEpochs.get(ledgerId);
+      const formatVersion = this.ledgerSegmentFormats.get(ledgerId) ?? 2;
+      const directory = formatVersion === 1
+        ? join(this.segmentDirectory, ledgerDirectoryName(ledgerId), shardId)
+        : join(this.segmentDirectory, ledgerDirectoryName(ledgerId), epochDirectoryName(routingEpoch.epochNumber), shardId);
       const state = this.shardStates.get(key) ?? {
         ledgerId,
         shardId,
+        epochNumber: routingEpoch.epochNumber,
+        formatVersion,
+        directory,
         nextSegmentNumber: 0,
         previousSegmentHash: null,
       };
-      const directory = join(this.segmentDirectory, ledgerDirectoryName(ledgerId), shardId);
-      const outputPath = join(directory, segmentFileName(state.nextSegmentNumber));
+      const outputPath = join(state.directory, segmentFileName(state.nextSegmentNumber));
       const result = await writeSegment({
         outputPath,
         events: items.map((item) => item.event),
         routingPolicy: this.routingEpochs.get(ledgerId).routingPolicy,
         segmentNumber: state.nextSegmentNumber,
         previousSegmentHash: state.previousSegmentHash,
+        routingEpoch: state.formatVersion === 1 ? null : {
+          epochNumber: routingEpoch.epochNumber,
+          epochHash: fromHex(routingEpoch.epochHash, 32),
+        },
         signer: this.signer,
       });
+      this.#recordLedgerSegmentFormat(ledgerId, state.formatVersion);
 
       items.forEach((item, recordIndex) => {
         this.eventIndex.set(item.event.eventId, {
@@ -339,6 +409,9 @@ export class LocalLedger {
       this.shardStates.set(key, {
         ledgerId,
         shardId,
+        epochNumber: state.epochNumber,
+        formatVersion: state.formatVersion,
+        directory: state.directory,
         nextSegmentNumber: state.nextSegmentNumber + 1,
         previousSegmentHash: fromHex(result.segmentHash, 32),
       });
