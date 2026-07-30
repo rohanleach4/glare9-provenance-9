@@ -114,6 +114,8 @@ All limits belong in deployment policy or a signed ledger configuration record, 
 
 The current defaults are 1 MiB of uncompressed canonical framed records or 1,000 records per block, 32 MiB of the same logical bytes or 10,000 records per segment, and a 30-second segment age. Stored compressed sizes vary. The selection and reproducible benchmark are recorded in [`docs/G9P-lifecycle-sizing-v1.md`](./docs/G9P-lifecycle-sizing-v1.md). Deployments should rerun the benchmark with representative evidence before raising limits.
 
+Representative subject-distribution measurements and the reproducible `npm run benchmark:shards` command are recorded in [`docs/G9P-shard-benchmark-v1.md`](./docs/G9P-shard-benchmark-v1.md). They demonstrate that increasing shard count distributes unique subjects but cannot split one dominant subject.
+
 ## Global checkpoints
 
 A global checkpoint should commit to:
