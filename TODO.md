@@ -48,14 +48,14 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Implement crash-safe, topology-neutral durable accepted-event intake and restart recovery.
 - [x] Implement the signed routing-transition coordinator and complete old-epoch barrier.
 - [x] Implement restart-safe transition recovery and exactly-once new-epoch activation.
-- [ ] Test hot-shard behavior, back-pressure, shard recovery and multi-shard concurrency.
+- [x] Test hot-shard behavior, bounded back-pressure, multi-shard provisional recovery and serialized concurrent routing-transition barriers with independent segment verification.
 - [x] Define cross-shard correlation guarantees without implying unsupported global atomicity.
 
 ## Connectors and MySQL
 
 - [ ] Run the opt-in MySQL integration suite against a dedicated non-production database administered through MySQL Workbench.
-- [ ] Test connector restart, lease expiry, database failover, back-pressure and ledger unavailability under fault injection.
-- [ ] Add reusable connector contract tests for ordering, recovery, quarantine and reconciliation.
+- [x] Test connector restart, lease expiry, injected database outage recovery, ledger back-pressure and ledger unavailability; production-like database failover qualification remains deployment-specific.
+- [x] Add a reusable connector contract test kit for ordering, uncertain-acceptance recovery, permanent-failure quarantine and monotonic receipt reconciliation, adopted by the MySQL worker.
 - [ ] Verify least-privilege grants and TLS configuration in a production-like environment.
 - [x] Define outbox retention, dead-letter review, byte-identical replay and ledger-reconciliation operating procedures.
 - [x] Prove the connector passes customer-defined payload schemas opaquely and depends only on the dedicated outbox contract.
@@ -65,11 +65,11 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Standardise development and CI on Node.js 24 and npm 11 with enforced engine ranges, `.nvmrc` and lockfile installation.
 - [x] Make the aggregate test runner demonstrably fail on every child-suite failure.
 - [x] Add GitHub Actions checks for the aggregate unit, service, connector, format and compatibility suites without Docker-based MySQL.
-- [ ] Set reviewed coverage expectations for security- and protocol-critical code.
-- [ ] Add property-based tests for codecs, routing, idempotency and segment invariants.
-- [ ] Fuzz canonical decoding, frame parsing, decompression and imported evidence.
+- [x] Enforce reviewed security- and protocol-core coverage floors of 95% lines, 85% branches and 90% functions in CI, with higher measured results recorded.
+- [x] Add seeded property-based tests for canonical codecs, routing, restart-stable idempotency and randomized segment invariants.
+- [x] Add bounded reproducible fuzzing for canonical decoding, frame and record parsing, decompression and mutated segment/routing evidence.
 - [x] Add fault-injection tests for append, compression, sync, promotion, acknowledgement and restart.
-- [ ] Add performance tests for ingestion, sealing, verification, replay, compression and connector lag.
+- [x] Add a bounded machine-readable performance harness and baseline for accepted ingestion, service and direct sealing, offline verification, verified restart, idempotent replay, compression profiles and in-process connector lag.
 - [x] Test retained version 1, epoch-aware version 2 and explicit rejection of unsupported future event and container versions.
 
 ## Operations and release

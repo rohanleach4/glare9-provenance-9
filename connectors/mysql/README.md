@@ -78,6 +78,8 @@ The `event_id` column and `envelope.eventId` must be identical. The envelope mus
 
 Follow [`docs/G9P-mysql-outbox-operations-v1.md`](../../docs/G9P-mysql-outbox-operations-v1.md) for retention, dead-letter review, replay and reconciliation. The schema-neutral upgrade boundary is evidenced in [`docs/G9P-connector-schema-neutrality-v1.md`](../../docs/G9P-connector-schema-neutrality-v1.md).
 
+The worker runs the shared ordering, recovery, quarantine and receipt-reconciliation test contract, plus MySQL-specific deterministic faults for restart, lease expiry, database outage, ledger back-pressure and ledger unavailability. See [`docs/G9P-connector-assurance-v1.md`](../../docs/G9P-connector-assurance-v1.md). Injected database failures establish worker behavior but do not replace a production-like failover exercise.
+
 ## Tests
 
 Run unit and worker tests:

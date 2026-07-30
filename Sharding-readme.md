@@ -116,6 +116,8 @@ The current defaults are 1 MiB of uncompressed canonical framed records or 1,000
 
 Representative subject-distribution measurements and the reproducible `npm run benchmark:shards` command are recorded in [`docs/G9P-shard-benchmark-v1.md`](./docs/G9P-shard-benchmark-v1.md). They demonstrate that increasing shard count distributes unique subjects but cannot split one dominant subject.
 
+Deterministic resilience tests exercise a deliberately hot subject alongside cooler shards, the aggregate active-block memory ceiling, retryable intake saturation, four-shard provisional recovery and concurrently queued calls across a signed routing transition. The reference service serializes ledger mutation while preserving independent shard streams; it does not yet claim parallel per-shard writers. The scenarios and assurance limits are recorded in [`docs/G9P-shard-resilience-v1.md`](./docs/G9P-shard-resilience-v1.md).
+
 ## Global checkpoints
 
 A global checkpoint should commit to:

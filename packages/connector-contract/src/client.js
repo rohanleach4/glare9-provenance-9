@@ -97,7 +97,7 @@ function validateReceipt(receipt) {
   return receipt;
 }
 
-function validateLifecycleReceipt(receipt) {
+export function validateLifecycleReceipt(receipt) {
   receiptObject(receipt);
   for (const field of ["eventId", "status", "ledgerId"]) requireReceiptString(receipt[field], `receipt.${field}`);
   requireHex(receipt.recordHash, "receipt.recordHash");

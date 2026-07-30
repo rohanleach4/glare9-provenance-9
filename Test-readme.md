@@ -125,6 +125,8 @@ Run the same suite with Node's built-in coverage report:
 npm run test:coverage
 ```
 
+This command enforces core floors of 95% lines, 85% branches and 90% functions. The current measured baseline and scope are recorded in `docs/G9P-quality-hardening-v1.md`.
+
 Run the separate lifecycle sizing benchmark:
 
 ```bash
@@ -133,12 +135,21 @@ npm run benchmark:lifecycle
 
 It measures block and segment sweeps for compressible and high-entropy evidence, verifies every generated segment and emits JSON results. It is intentionally excluded from `test:all` because performance results are hardware-dependent.
 
+Run the combined service and connector performance harness:
+
+```bash
+npm run benchmark:performance
+```
+
+It measures accepted ingestion, service and direct sealing, offline verification, verified restart, idempotent replay, compression profiles and an in-process connector-lag lower bound. The recorded environment, results and exclusions are in `docs/G9P-performance-baseline-v1.md`. It remains outside deterministic CI because hardware and filesystem synchronization materially affect results.
+
 Run deterministic shard-distribution planning and repository security checks:
 
 ```bash
 npm run benchmark:shards
 npm run scan:repository
 npm run audit:dependencies
+npm run fuzz
 ```
 
 The dependency audit queries the npm vulnerability service and therefore requires network access. GitHub Actions runs the full suite on every pull request and runs repository scanning, dependency audit and CodeQL on pull requests, `main` and a weekly schedule.
@@ -165,6 +176,8 @@ The current suite covers:
 - Durable accepted-event retention, idempotency, provisional promotion, corruption rejection and restart sealing
 - Cross-request bounded block/segment batching, explicit block-boundary preservation and age sealing
 - Durable compressed provisional-block recovery and retryable intake back-pressure
+- Hot-shard bounded-memory behavior, cooler-shard progress, concurrent admission ceilings and four-shard restart recovery
+- Serialized concurrent submissions on both sides of a signed routing-transition barrier
 - Strict accepted/provisional/sealed receipt schemas and authenticated monotonic polling
 - Accepted-first connector custody transfer and lost-acknowledgement replay
 - Signed transition barriers, credential separation, retry idempotency, missing-head rejection and epoch activation recovery
@@ -173,13 +186,16 @@ The current suite covers:
 - Authenticated ingestion and idempotent receipt replay
 - Event-index reconstruction from verified segments
 - Connector response validation
+- Reusable connector ordering, uncertain-acceptance recovery, quarantine and monotonic receipt reconciliation
 - MySQL configuration and safe table-name handling
-- Worker delivery, retry and invalid-envelope dead-letter behaviour
+- Worker delivery, retry, invalid-envelope dead-letter, lease-expiry restart, database-outage, back-pressure and ledger-unavailability behaviour
 - Exact-byte backup/archive/restore with verified-history receipt reconstruction
 - Hostile input rejection at canonical, frame, record, object and decompression ceilings
 - Diagnostic redaction for unexpected ledger and connector failures
 - Explicit future event, segment and routing-version rejection
 - Opaque customer-schema connector delivery
+- Seeded canonical, routing, idempotency and segment property invariants
+- Bounded canonical, frame, record, decompression and imported-evidence fuzzing
 
 ### Real MySQL integration
 
@@ -202,6 +218,12 @@ The sealing matrix inspects the interrupted filesystem state before restart, inc
 See `docs/G9P-sealing-crash-safety-v1.md` for the full boundary matrix, recovery invariants and assurance limits. Deterministic injection does not replace deployment-specific abrupt-process, filesystem, power-loss or hardware fault testing.
 
 The sealed-storage suite exercises the bundled local adapter and an injected non-filesystem implementation. It proves that final history is discovered by opaque key, verified from exact bytes, rebuilt after service restart and replayed idempotently without granting the adapter cryptographic authority. See `docs/G9P-sealed-storage-v1.md` for the adapter guarantees and deployment limits.
+
+The shard-resilience suite uses deterministic synthetic load rather than wall-clock throughput thresholds. It independently verifies every resulting segment and distinguishes concurrent callers from parallel ledger mutation. See `docs/G9P-shard-resilience-v1.md` for the scenarios, guarantees and exclusions.
+
+The connector test kit is reusable by database adapters and is executed by the MySQL worker suite. Its in-memory outbox model proves state-machine behavior under deterministic faults; the skipped-by-default Workbench integration remains necessary for actual InnoDB behavior. See `docs/G9P-connector-assurance-v1.md`.
+
+The property and fuzz suites use recorded seeds, bounded inputs and controlled error assertions. The scheduled security workflow reruns hostile-input fuzzing, while CI rejects reductions below the reviewed core coverage floors. See `docs/G9P-quality-hardening-v1.md`.
 
 The repository should eventually provide additional stable commands for:
 

@@ -64,6 +64,8 @@ The block and segment byte limits count uncompressed canonical framed-record byt
 
 The block, segment and age defaults are supported by the reproducible measurements in [`docs/G9P-lifecycle-sizing-v1.md`](../../docs/G9P-lifecycle-sizing-v1.md). Run `npm run benchmark:lifecycle` on representative deployment hardware before raising them.
 
+The deterministic shard-resilience suite proves aggregate active-memory bounding under a hot subject, cooler-shard progress, exact concurrent intake admission, multi-shard provisional recovery and the serialized routing-transition barrier. It does not claim parallel mutation within one service process. See [`docs/G9P-shard-resilience-v1.md`](../../docs/G9P-shard-resilience-v1.md).
+
 Receipt states are:
 
 - `accepted`: durable topology-neutral intake exists.

@@ -27,4 +27,5 @@ jobs:
       - run: npm ci
       - run: npm run scan:repository
       - run: npm run audit:dependencies
+      - run: npm run fuzz
       - uses: github/codeql-action/analyze@v4

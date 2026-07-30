@@ -10,6 +10,8 @@ The benchmark is reproducible with:
 npm run benchmark:lifecycle
 ```
 
+For the complementary accepted-ingestion, restart, replay and connector measurements, see [`G9P-performance-baseline-v1.md`](./G9P-performance-baseline-v1.md) and `npm run benchmark:performance`.
+
 The command creates temporary epoch-aware version 2 segments outside the repository, verifies every segment offline, emits machine-readable JSON to standard output and removes its temporary files. It is intentionally separate from the deterministic default test suite.
 
 ## Workload profiles

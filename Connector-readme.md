@@ -41,6 +41,8 @@ Stable accepted-first receipt fields, polling and error semantics are specified 
 
 Outbox retention, dead-letter review and byte-identical replay are specified in [`docs/G9P-mysql-outbox-operations-v1.md`](./docs/G9P-mysql-outbox-operations-v1.md). Connector upgrade schema-neutrality and its automated evidence are recorded in [`docs/G9P-connector-schema-neutrality-v1.md`](./docs/G9P-connector-schema-neutrality-v1.md).
 
+Ordering, uncertain-acceptance recovery, quarantine and monotonic receipt reconciliation are exercised through the reusable `@glare9/provenance-connector-contract/test-kit`. The MySQL worker adopts that kit and adds deterministic database-outage, ledger-unavailability and back-pressure faults. See [`docs/G9P-connector-assurance-v1.md`](./docs/G9P-connector-assurance-v1.md).
+
 ## MySQL connector
 
 ### Implementation status
@@ -57,6 +59,7 @@ The first connector iteration is implemented in `connectors/mysql` using the mai
 - TLS-required-by-default configuration
 - `/health` and `/ready` endpoints
 - Unit and optional real-MySQL integration tests
+- Reusable connector-contract and deterministic availability-fault tests
 
 The version 1 ledger contract seals each submitted shard group synchronously and remains available for compatibility. The stable version 2 accepted-first contract allows bounded active segments to span requests and exposes `accepted`, `provisional`, and `sealed` states with authenticated polling. The MySQL worker uses version 2: durable `accepted` transfers custody to the ledger and allows the outbox row to be marked delivered. Later sealed finality remains queryable from the ledger by event ID and expected record hash. This requires no access to customer business tables.
 

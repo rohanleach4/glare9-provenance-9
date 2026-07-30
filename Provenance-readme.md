@@ -206,6 +206,7 @@ The current JavaScript implementation includes:
 - Bounded epoch-scoped active blocks and active segments spanning accepted-first requests
 - Durable completed-block recovery with byte, record-count and age-based sealing
 - Intake and active-block back-pressure with explicit retryable rejection
+- Deterministic hot-shard, multi-shard recovery and serialized concurrency resilience coverage
 - Signed forward-only routing transitions with verified old-shard barriers and restart-safe activation
 - Create-only `.g9p.part` finalisation
 - Injectable sealed storage with a bundled local-filesystem adapter and independent byte verification
@@ -214,6 +215,9 @@ The current JavaScript implementation includes:
 - An authenticated, versioned batch-ingestion API
 - Ledger-side event idempotency rebuilt from verified segments
 - A shared database-independent connector client contract
+- Reusable connector ordering, recovery, quarantine and receipt-reconciliation assurance
+- Enforced core coverage floors, seeded property invariants and bounded hostile-input fuzzing
+- Reproducible ingestion, sealing, verification, replay, compression and connector-lag measurements
 - A separately deployable MySQL transactional-outbox worker
 - Leased delivery, retry, dead-lettering and sealed-receipt persistence
 
@@ -260,6 +264,10 @@ The licence remains to be formally selected. Apache 2.0 is the current adoption-
 - `docs/G9P-resource-limit-review-v1.md`: hostile-input parser and decompression limit review
 - `docs/G9P-diagnostic-data-policy-v1.md`: diagnostic redaction policy and implementation review
 - `docs/G9P-shard-benchmark-v1.md`: representative subject-distribution measurements
+- `docs/G9P-shard-resilience-v1.md`: hot-shard, back-pressure, recovery and concurrency evidence
 - `docs/G9P-compatibility-test-matrix-v1.md`: supported and rejected version behavior
 - `docs/G9P-development-ci-v1.md`: supported development runtime and CI policy
+- `docs/G9P-connector-assurance-v1.md`: reusable connector contract and deterministic fault matrix
+- `docs/G9P-quality-hardening-v1.md`: enforced coverage, property testing and bounded fuzzing profile
+- `docs/G9P-performance-baseline-v1.md`: end-to-end performance harness and measured baseline
 - `Global-readme.md`: ignored local build instructions

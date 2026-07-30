@@ -14,4 +14,6 @@ Developers should switch to Node 24 through their normal version manager and use
 
 `.github/workflows/security.yml` runs repository secret/path scanning, JavaScript syntax checks, the production dependency vulnerability audit and GitHub CodeQL on pull requests, pushes to `main` and a weekly schedule.
 
+The main CI workflow also enforces the native core coverage floors documented in `G9P-quality-hardening-v1.md`. The security workflow runs the bounded reproducible fuzz suite before CodeQL analysis.
+
 No CI workflow starts Docker-based MySQL.

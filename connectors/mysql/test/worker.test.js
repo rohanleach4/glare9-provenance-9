@@ -69,6 +69,79 @@ test("worker releases failed deliveries with exponential backoff metadata", asyn
   assert.equal(worker.snapshot().failedBatches, 1);
 });
 
+for (const fault of [
+  { code: "LEDGER_BACKPRESSURE", message: "Ledger capacity reached" },
+  { code: "LEDGER_UNAVAILABLE", message: "Ledger service unavailable" },
+]) {
+  test(`worker retains and retries rows after ${fault.code}`, async () => {
+    const failures = [];
+    const deliveries = [];
+    let submission = 0;
+    const repository = {
+      claimBatch: async () => [{ ...claimed[0], attemptCount: submission + 1 }],
+      markDelivered: async (items, receipts) => deliveries.push({ items, receipts }),
+      markFailed: async (items, error, options) => failures.push({ items, error, options }),
+    };
+    const worker = new MySqlConnectorWorker({
+      repository,
+      provenanceClient: {
+        submitAcceptedBatch: async () => {
+          submission += 1;
+          if (submission === 1) {
+            throw Object.assign(new Error(fault.message), { code: fault.code, retryable: true });
+          }
+          return [receipt];
+        },
+      },
+      connectorId: "connector-1",
+      retryBaseMs: 100,
+      logger: { error() {} },
+    });
+
+    assert.equal(await worker.runOnce(), 0);
+    assert.equal(failures.length, 1);
+    assert.equal(failures[0].error.code, fault.code);
+    assert.equal(failures[0].error.retryable, true);
+    assert.equal(await worker.runOnce(), 1);
+    assert.equal(deliveries.length, 1);
+    assert.equal(worker.snapshot().deliveredEvents, 1);
+  });
+}
+
+test("worker loop survives a database failover and resumes ordered delivery", async () => {
+  const controller = new AbortController();
+  const logs = [];
+  let claims = 0;
+  const repository = {
+    claimBatch: async () => {
+      claims += 1;
+      if (claims === 1) {
+        throw Object.assign(new Error("Injected database failover"), {
+          code: "DATABASE_UNAVAILABLE",
+          retryable: true,
+        });
+      }
+      return claimed;
+    },
+    markDelivered: async () => controller.abort(),
+    markFailed: async () => assert.fail("a claim failure must not mutate unclaimed rows"),
+  };
+  const worker = new MySqlConnectorWorker({
+    repository,
+    provenanceClient: { submitAcceptedBatch: async () => [receipt] },
+    connectorId: "connector-1",
+    pollIntervalMs: 1,
+    logger: { error: (...values) => logs.push(values) },
+  });
+
+  await worker.run(controller.signal);
+  assert.equal(claims, 2);
+  assert.equal(worker.snapshot().state, "stopped");
+  assert.equal(worker.snapshot().deliveredEvents, 1);
+  assert.equal(worker.snapshot().lastErrorCode, null);
+  assert.equal(logs[0][1].code, "DATABASE_UNAVAILABLE");
+});
+
 test("worker dead-letters an outbox envelope whose event ID does not match", async () => {
   let failure;
   const repository = {

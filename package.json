@@ -25,12 +25,14 @@
     "shard": "node src/cli/g9p.js shard",
     "benchmark:lifecycle": "node scripts/benchmark-lifecycle.js",
     "benchmark:shards": "node scripts/benchmark-shards.js",
+    "benchmark:performance": "node scripts/benchmark-performance.js",
     "scan:repository": "node scripts/security-scan.js",
     "audit:dependencies": "npm audit --omit=dev --audit-level=high",
     "start:ledger": "npm run start --workspace=@glare9/provenance-ledger-service",
     "start:connector:mysql": "npm run start --workspace=@glare9/provenance-connector-mysql",
     "test": "node --test test/*.test.js",
     "test:all": "node scripts/test-all.js",
-    "test:coverage": "node --test --experimental-test-coverage test/*.test.js"
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=95 --test-coverage-branches=85 --test-coverage-functions=90 test/*.test.js",
+    "fuzz": "node --test test/fuzz.test.js"
   }
 }

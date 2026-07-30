@@ -797,6 +797,13 @@ export class LocalLedger {
     active.byteCount += recordBytes;
     this.activeBlockBytes += recordBytes;
     this.assignedPendingIds.add(item.event.eventId);
+    this.testFaultInjector?.("active.after-append", {
+      ledgerId: active.ledgerId,
+      epochNumber: active.epochNumber,
+      shardId: active.shardId,
+      activeBlockBytes: active.activeBlockBytes,
+      aggregateActiveBlockBytes: this.activeBlockBytes,
+    });
 
     if (active.activeBlock.length >= this.lifecycle.blockMaxRecords
       || active.activeBlockBytes >= this.lifecycle.blockMaxBytes) {
