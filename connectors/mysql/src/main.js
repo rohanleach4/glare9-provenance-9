@@ -18,7 +18,7 @@ async function main() {
   });
   const client = new ProvenanceClient({
     baseUrl: config.provenanceUrl,
-    token: config.provenanceToken,
+    tokens: config.provenanceTokens,
   });
   const worker = new MySqlConnectorWorker({
     repository,

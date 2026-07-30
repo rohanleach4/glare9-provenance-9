@@ -172,12 +172,14 @@ async function parseResponse(response) {
 }
 
 export class ProvenanceClient {
-  constructor({ baseUrl, token, timeoutMs = 15_000, fetchImplementation = globalThis.fetch }) {
+  constructor({ baseUrl, token, tokens = token === undefined ? undefined : [token], timeoutMs = 15_000, fetchImplementation = globalThis.fetch }) {
     this.baseUrl = new URL(requireString(baseUrl, "baseUrl"));
     if (!new Set(["http:", "https:"]).has(this.baseUrl.protocol)) {
       throw new TypeError("baseUrl must use HTTP or HTTPS");
     }
-    this.token = requireString(token, "token");
+    if (!Array.isArray(tokens) || tokens.length < 1 || tokens.length > 4) throw new TypeError("tokens must contain one to four credentials");
+    this.tokens = tokens.map((entry, index) => requireString(entry, `tokens[${index}]`));
+    if (new Set(this.tokens).size !== this.tokens.length) throw new TypeError("tokens must be distinct");
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100) {
       throw new TypeError("timeoutMs must be an integer of at least 100 milliseconds");
     }
@@ -191,28 +193,31 @@ export class ProvenanceClient {
   async request(path, { method = "GET", body } = {}) {
     const requestId = randomUUID();
     let response;
-    try {
-      response = await this.fetch(new URL(path, this.baseUrl), {
-        method,
-        headers: {
-          accept: "application/json",
-          authorization: `Bearer ${this.token}`,
-          "content-type": "application/json",
-          "x-request-id": requestId,
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
-    } catch (error) {
-      throw new ProvenanceServiceError("Could not reach the ledger service", {
-        code: error?.name === "TimeoutError" ? "LEDGER_TIMEOUT" : "LEDGER_UNAVAILABLE",
-        retryable: true,
-        requestId,
-        cause: error,
-      });
+    let payload;
+    for (let index = 0; index < this.tokens.length; index += 1) {
+      try {
+        response = await this.fetch(new URL(path, this.baseUrl), {
+          method,
+          headers: {
+            accept: "application/json",
+            authorization: `Bearer ${this.tokens[index]}`,
+            "content-type": "application/json",
+            "x-request-id": requestId,
+          },
+          body: body === undefined ? undefined : JSON.stringify(body),
+          signal: AbortSignal.timeout(this.timeoutMs),
+        });
+      } catch (error) {
+        throw new ProvenanceServiceError("Could not reach the ledger service", {
+          code: error?.name === "TimeoutError" ? "LEDGER_TIMEOUT" : "LEDGER_UNAVAILABLE",
+          retryable: true,
+          requestId,
+          cause: error,
+        });
+      }
+      payload = await parseResponse(response);
+      if (response.status !== 401 || index === this.tokens.length - 1) break;
     }
-
-    const payload = await parseResponse(response);
     if (!response.ok) {
       throw new ProvenanceServiceError(payload.message ?? `Ledger service returned HTTP ${response.status}`, {
         status: response.status,

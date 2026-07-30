@@ -26,6 +26,15 @@ function optionalToken(value, name) {
   return value;
 }
 
+function tokenSet(value, fallback, name) {
+  const source = value ?? fallback;
+  const tokens = required(source, name).split(",").map((token) => token.trim());
+  if (tokens.length > 4 || tokens.some((token) => token.length < 16) || new Set(tokens).size !== tokens.length) {
+    throw new Error(`${name} must contain one to four distinct comma-separated tokens of at least 16 characters`);
+  }
+  return Object.freeze(tokens);
+}
+
 export function loadConnectorConfig(environment = process.env) {
   const sslMode = environment.MYSQL_SSL_MODE ?? "required";
   if (!new Set(["required", "disabled"]).has(sslMode)) {
@@ -59,7 +68,7 @@ export function loadConnectorConfig(environment = process.env) {
     mysql: Object.freeze(mysql),
     outboxTable: environment.MYSQL_OUTBOX_TABLE ?? "provenance_outbox",
     provenanceUrl: required(environment.PROVENANCE_URL, "PROVENANCE_URL"),
-    provenanceToken: required(environment.PROVENANCE_API_TOKEN, "PROVENANCE_API_TOKEN"),
+    provenanceTokens: tokenSet(environment.PROVENANCE_API_TOKENS, environment.PROVENANCE_API_TOKEN, "PROVENANCE_API_TOKENS"),
     connectorId: required(environment.CONNECTOR_ID, "CONNECTOR_ID"),
     batchSize: integer(environment.CONNECTOR_BATCH_SIZE, 100, "CONNECTOR_BATCH_SIZE", { min: 1, max: 1_000 }),
     pollIntervalMs: integer(environment.CONNECTOR_POLL_INTERVAL_MS, 1_000, "CONNECTOR_POLL_INTERVAL_MS", { min: 50, max: 300_000 }),

@@ -62,6 +62,21 @@ test("client preserves structured service errors", async () => {
   );
 });
 
+test("client retries the same request with an overlapping credential after 401", async () => {
+  const seen = [];
+  const client = new ProvenanceClient({
+    baseUrl: "https://ledger.example",
+    tokens: ["new-token-not-active", "old-token-still-active"],
+    fetchImplementation: async (_url, options) => {
+      seen.push(options.headers.authorization);
+      if (seen.length === 1) return response(401, { code: "UNAUTHORISED", retryable: false });
+      return response(200, { status: "ok" });
+    },
+  });
+  assert.deepEqual(await client.health(), { status: "ok" });
+  assert.deepEqual(seen, ["Bearer new-token-not-active", "Bearer old-token-still-active"]);
+});
+
 test("client rejects a receipt for the wrong event", async () => {
   const client = new ProvenanceClient({
     baseUrl: "https://ledger.example/",

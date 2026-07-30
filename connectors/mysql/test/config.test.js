@@ -10,7 +10,7 @@ const baseEnvironment = {
   MYSQL_PASSWORD: "secret",
   MYSQL_DATABASE: "application",
   PROVENANCE_URL: "https://ledger.example",
-  PROVENANCE_API_TOKEN: "ledger-secret",
+  PROVENANCE_API_TOKEN: "ledger-secret-123456",
   CONNECTOR_ID: "connector-1",
 };
 
@@ -29,6 +29,15 @@ test("connector metrics require an optional distinct long secret", () => {
   assert.equal(loadConnectorConfig(baseEnvironment).metricsToken, undefined);
   assert.equal(loadConnectorConfig({ ...baseEnvironment, CONNECTOR_METRICS_TOKEN: "metrics-token-123456" }).metricsToken, "metrics-token-123456");
   assert.throws(() => loadConnectorConfig({ ...baseEnvironment, CONNECTOR_METRICS_TOKEN: "short" }));
+});
+
+test("connector can overlap bounded ledger credentials during rotation", () => {
+  const config = loadConnectorConfig({
+    ...baseEnvironment,
+    PROVENANCE_API_TOKEN: undefined,
+    PROVENANCE_API_TOKENS: "new-ledger-token-123456,old-ledger-token-123456",
+  });
+  assert.deepEqual(config.provenanceTokens, ["new-ledger-token-123456", "old-ledger-token-123456"]);
 });
 
 test("table paths accept only safe one- or two-part identifiers", () => {

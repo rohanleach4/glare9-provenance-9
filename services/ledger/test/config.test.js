@@ -23,11 +23,11 @@ test("legacy routing adoption is disabled by default and requires an explicit bo
 });
 
 test("routing administration is disabled by default and requires a separate long token", () => {
-  assert.equal(loadLedgerConfig(baseEnvironment).adminToken, undefined);
-  assert.equal(loadLedgerConfig({
+  assert.deepEqual(loadLedgerConfig(baseEnvironment).adminTokens, []);
+  assert.deepEqual(loadLedgerConfig({
     ...baseEnvironment,
     PROVENANCE_ADMIN_TOKEN: "a-separate-long-admin-token",
-  }).adminToken, "a-separate-long-admin-token");
+  }).adminTokens, ["a-separate-long-admin-token"]);
   assert.throws(
     () => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_ADMIN_TOKEN: "too-short" }),
     /at least 16 characters/u,
@@ -36,6 +36,34 @@ test("routing administration is disabled by default and requires a separate long
     () => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_ADMIN_TOKEN: baseEnvironment.PROVENANCE_API_TOKEN }),
     /must be different/u,
   );
+});
+
+test("ingestion and administration credentials support bounded overlap during rotation", () => {
+  const config = loadLedgerConfig({
+    PROVENANCE_API_TOKENS: "new-ingestion-token-123,old-ingestion-token-123",
+    PROVENANCE_ADMIN_TOKENS: "new-administration-token-123,old-administration-token-123",
+  });
+  assert.deepEqual(config.apiTokens, ["new-ingestion-token-123", "old-ingestion-token-123"]);
+  assert.deepEqual(config.adminTokens, ["new-administration-token-123", "old-administration-token-123"]);
+  assert.throws(() => loadLedgerConfig({ PROVENANCE_API_TOKENS: "same-token-value-123,same-token-value-123" }), /distinct/u);
+});
+
+test("TLS configuration requires a complete server pair and client CA for mutual TLS", () => {
+  assert.throws(() => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_TLS_CERT_PATH: "server.pem" }), /configured together/u);
+  assert.throws(() => loadLedgerConfig({
+    ...baseEnvironment,
+    PROVENANCE_TLS_CERT_PATH: "server.pem",
+    PROVENANCE_TLS_KEY_PATH: "server-key.pem",
+    PROVENANCE_TLS_REQUIRE_CLIENT_CERTIFICATE: "true",
+  }), /CLIENT_CA_PATH/u);
+  const config = loadLedgerConfig({
+    ...baseEnvironment,
+    PROVENANCE_TLS_CERT_PATH: "server.pem",
+    PROVENANCE_TLS_KEY_PATH: "server-key.pem",
+    PROVENANCE_TLS_CLIENT_CA_PATH: "client-ca.pem",
+    PROVENANCE_TLS_REQUIRE_CLIENT_CERTIFICATE: "true",
+  });
+  assert.equal(config.tls.requireClientCertificate, true);
 });
 
 test("bounded lifecycle limits have safe defaults and reject invalid values", () => {

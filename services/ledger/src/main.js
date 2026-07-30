@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { loadLedgerConfig } from "./config.js";
 import { loadOrCreateLocalSigner, loadOrCreateLocalTopologyAuthority } from "./key-store.js";
 import { LocalLedger } from "./local-ledger.js";
@@ -17,10 +19,19 @@ async function main() {
     adoptLegacyRoutingHistory: config.adoptLegacyRoutingHistory,
     lifecycle: config.lifecycle,
   }).initialize();
+  const tls = config.tls === undefined ? undefined : {
+    cert: await readFile(config.tls.certPath),
+    key: await readFile(config.tls.keyPath),
+    ...(config.tls.caPath === undefined ? {} : { ca: await readFile(config.tls.caPath) }),
+    requestCert: config.tls.requireClientCertificate,
+    rejectUnauthorized: config.tls.requireClientCertificate,
+    minVersion: "TLSv1.3",
+  };
   const service = createLedgerServer({
     ledger,
-    apiToken: config.apiToken,
-    adminToken: config.adminToken,
+    apiTokens: config.apiTokens,
+    adminTokens: config.adminTokens,
+    tls,
     maxBatchEvents: config.maxBatchEvents,
     maxRequestBytes: config.maxRequestBytes,
   });

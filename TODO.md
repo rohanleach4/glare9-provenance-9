@@ -9,10 +9,10 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Publish language-neutral conformance vectors for valid and precisely invalid version 1/version 2 segments and routing epochs.
 - [x] Produce a separately implemented offline verifier with no production-code imports and confirm agreement on every frozen conformance vector.
 - [x] Approve the routing-epoch, forward-only resharding and topology-transition protocol in `docs/G9P-routing-epochs-v1.md`.
-- [ ] Specify checkpoint, witness-receipt and threshold-attestation formats.
-- [ ] Specify key registration, rotation, revocation and customer-controlled event signing.
-- [ ] Decide the source-language and public package compatibility policy before the API surface grows.
-- [ ] Formally approve an open-source licence and contributor-governance model.
+- [x] Specify candidate checkpoint, witness-receipt and threshold-attestation formats, retaining implementation and protocol approval as separate gates.
+- [x] Specify key registration, forward rotation, revocation, role separation and a versioned customer-controlled event-signing direction.
+- [x] Decide the maintained source-language, workspace boundaries and experimental public-package compatibility policy before the API surface grows.
+- [x] Publish the Apache-2.0 licence and contributor-governance candidate without granting a licence; formal owner/legal approval remains a go-live gate.
 
 ## Ledger durability and storage
 
@@ -30,8 +30,8 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 
 - [ ] Replace development signing-key files with an approved KMS, HSM or customer-controlled key integration.
 - [x] Document signer trust bootstrap, forward rotation, revocation and historical verification procedures, including current implementation limits.
-- [ ] Add transport TLS and production-grade service identity and authorization controls.
-- [ ] Add bearer-token or credential rotation without ingestion downtime.
+- [x] Add optional TLS 1.3/mTLS service transport, separate bounded ingestion/administration credential sets and least-privilege deployment guidance; production identity qualification remains operational evidence.
+- [x] Add bounded overlapping bearer credentials and connector 401 fallback so credentials can rotate without ingestion downtime.
 - [x] Review and test parser, length, allocation and decompression ceilings against denial-of-service threats.
 - [x] Remove arbitrary exception text from service and connector diagnostics and test that payload and credential sentinels do not reach logs or HTTP failures.
 - [x] Add repeatable repository secret/path and syntax scanning, a zero-finding production dependency audit and scheduled CodeQL/vulnerability CI.
@@ -76,9 +76,9 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Define the supported experimental single-writer topology, explicit unsupported topologies, measured capacity guidance and integrity-first availability objectives without claiming an SLA.
 - [x] Add minimal liveness, dependency-aware readiness, authenticated aggregate Prometheus metrics and initial alert rules for ledger and connector operation.
 - [x] Write evidence-preserving runbooks for key compromise, corrupt storage, missing segments, unimplemented-witness gaps and connector backlog.
-- [ ] Define privacy, retention, deletion-reference and customer-content handling policies.
+- [x] Define privacy, retention, deletion-reference and customer-content handling policies without treating hashes as automatic anonymisation.
 - [x] Produce a consolidated administrator, operator, verifier and incident-response manual linked to the detailed procedures.
-- [ ] Establish versioning, changelog, release-signing, SBOM and reproducible-build procedures.
+- [x] Establish software/format version separation, changelog, deterministic source archive, CycloneDX SBOM, signed-tag/attestation and reproducible-release procedures.
 - [ ] Complete a production-readiness review and record approval of every deferred item.
 - [ ] Run a non-production pilot and recovery exercise before accepting production evidence.
 
@@ -89,6 +89,8 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [ ] Recovery, key rotation and full offline verification have been exercised successfully.
 - [ ] Production operators have approved the deployment, monitoring and incident runbooks.
 - [ ] The product owner has approved the published format stability and compatibility policy and its support lifetime.
+- [ ] The product owner and legal adviser have approved the open-source licence, inbound contribution terms and contributor-governance model.
+- [ ] Production security owners have approved and exercised the chosen KMS/HSM or customer-controlled signer and transport identity deployment.
 - [ ] An independent security reviewer has approved the threat model and cryptographic design, with every critical or high finding resolved.
 - [ ] An external implementer or reviewer has confirmed the conformance vectors and independently implemented verifier results.
 - [ ] The product owner has explicitly approved production use and its stated assurance level.

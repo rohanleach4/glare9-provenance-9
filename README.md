@@ -95,6 +95,14 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-threat-model-v1.md`](./docs/G9P-threat-model-v1.md) — implementation trust boundaries, controls and residual risks
 - [`docs/G9P-format-compatibility-policy-v1.md`](./docs/G9P-format-compatibility-policy-v1.md) — candidate format stability and retained-verification policy
 - [`docs/G9P-conformance-vectors-v1.md`](./docs/G9P-conformance-vectors-v1.md) — language-neutral vectors and separate verifier agreement
+- [`docs/G9P-source-package-policy-v1.md`](./docs/G9P-source-package-policy-v1.md) — maintained language, workspace and package compatibility policy
+- [`docs/G9P-privacy-content-policy-v1.md`](./docs/G9P-privacy-content-policy-v1.md) — privacy, retention, deletion-reference and content handling
+- [`docs/G9P-release-procedure-v1.md`](./docs/G9P-release-procedure-v1.md) — versioning, SBOM, signing and reproducible source releases
+- [`docs/G9P-licence-governance-candidate-v1.md`](./docs/G9P-licence-governance-candidate-v1.md) — non-granting licence and governance candidate
+- [`docs/G9P-key-identity-protocol-v1.md`](./docs/G9P-key-identity-protocol-v1.md) — key lifecycle and customer-controlled signing candidate
+- [`docs/G9P-transport-identity-v1.md`](./docs/G9P-transport-identity-v1.md) — TLS, mutual TLS and credential rotation profile
+- [`docs/G9P-checkpoint-witness-v1.md`](./docs/G9P-checkpoint-witness-v1.md) — checkpoint, witness and threshold policy candidate
+- [`docs/G9P-mysql-qualification-v1.md`](./docs/G9P-mysql-qualification-v1.md) — Workbench-managed integration and TLS/grant qualification
 - [`docs/G9P-deployment-operations-v1.md`](./docs/G9P-deployment-operations-v1.md) — supported topology, capacity and availability profile
 - [`docs/G9P-observability-v1.md`](./docs/G9P-observability-v1.md) — health, readiness, metrics and alerting
 - [`docs/G9P-incident-runbooks-v1.md`](./docs/G9P-incident-runbooks-v1.md) — evidence-preserving incident procedures

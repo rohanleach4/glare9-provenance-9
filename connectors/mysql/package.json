@@ -14,6 +14,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env src/main.js",
     "test": "node --test test/*.test.js",
-    "test:integration": "node --test test/mysql.integration.test.js"
+    "test:integration": "node --test test/mysql.integration.test.js",
+    "test:qualification": "node --test test/mysql-qualification.integration.test.js"
   }
 }

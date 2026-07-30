@@ -1,15 +1,18 @@
 import { timingSafeEqual, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
+import { createServer as createSecureServer } from "node:https";
 
 import { G9pError } from "@glare9/provenance";
 
 import { ledgerMetrics } from "./metrics.js";
 
-function tokenMatches(header, expectedToken) {
+function tokenMatches(header, expectedTokens) {
   if (typeof header !== "string" || !header.startsWith("Bearer ")) return false;
   const supplied = Buffer.from(header.slice(7), "utf8");
-  const expected = Buffer.from(expectedToken, "utf8");
-  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+  return expectedTokens.some((token) => {
+    const expected = Buffer.from(token, "utf8");
+    return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+  });
 }
 
 function sendJson(response, status, payload) {
@@ -71,8 +74,8 @@ function retryable(error) {
   return new Set(["INTAKE_WRITE", "ACTIVE_STATE_WRITE", "SEGMENT_WRITE", "COMPRESS_FAILED", "LEDGER_BACKPRESSURE"]).has(error.code);
 }
 
-export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvents = 500, maxRequestBytes = 8 * 1024 * 1024, logger = console, testFaultInjector }) {
-  const server = createServer(async (request, response) => {
+export function createLedgerServer({ ledger, apiToken, apiTokens = [apiToken], adminToken, adminTokens = adminToken === undefined ? [] : [adminToken], tls, maxBatchEvents = 500, maxRequestBytes = 8 * 1024 * 1024, logger = console, testFaultInjector }) {
+  const handler = async (request, response) => {
     const requestId = request.headers["x-request-id"] ?? randomUUID();
     try {
       const url = new URL(request.url, "http://ledger.local");
@@ -88,11 +91,11 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
       }
 
       if (request.method === "POST" && url.pathname === "/v1/admin/routing-transitions") {
-        if (adminToken === undefined) {
+        if (adminTokens.length === 0) {
           sendJson(response, 404, { code: "NOT_FOUND", message: "Route not found", retryable: false, requestId });
           return;
         }
-        if (!tokenMatches(request.headers.authorization, adminToken)) {
+        if (!tokenMatches(request.headers.authorization, adminTokens)) {
           sendJson(response, 401, { code: "UNAUTHORISED", message: "A valid administration token is required", retryable: false, requestId });
           return;
         }
@@ -110,7 +113,7 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
         return;
       }
 
-      if (!tokenMatches(request.headers.authorization, apiToken)) {
+      if (!tokenMatches(request.headers.authorization, apiTokens)) {
         sendJson(response, 401, { code: "UNAUTHORISED", message: "A valid bearer token is required", retryable: false, requestId });
         return;
       }
@@ -174,7 +177,8 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
         requestId,
       });
     }
-  });
+  };
+  const server = tls === undefined ? createServer(handler) : createSecureServer(tls, handler);
 
   return {
     server,

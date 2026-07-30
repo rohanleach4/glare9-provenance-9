@@ -98,3 +98,11 @@ npm run test:integration --workspace=@glare9/provenance-connector-mysql
 ```
 
 The test creates and drops only a uniquely named `provenance_outbox_test_<process-id>` table. Never point it at production.
+
+Least-privilege/TLS qualification uses the actual connector identity, which must have only `SELECT` and `UPDATE` on the dedicated outbox. Set `MYSQL_QUALIFICATION_URL` for that non-production Workbench-managed account and run:
+
+```bash
+npm run test:qualification --workspace=@glare9/provenance-connector-mysql
+```
+
+This read-only check requires a negotiated TLS cipher and rejects broad or DDL/DML grants. It does not create, alter or drop anything.

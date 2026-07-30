@@ -12,6 +12,8 @@ cp services/ledger/.env.example services/ledger/.env
 
 The local service generates separate development Ed25519 segment-signing and topology-authority keys under its ignored data directory. That key store is not suitable for production.
 
+For credential rotation, configure the new token first and retained old token second in `PROVENANCE_API_TOKENS`; administration uses the separate `PROVENANCE_ADMIN_TOKENS` set. Certificate/key paths enable TLS 1.3, while a client CA plus `PROVENANCE_TLS_REQUIRE_CLIENT_CERTIFICATE=true` enables mutual TLS. Private keys and credentials remain external ignored secrets. See [`docs/G9P-transport-identity-v1.md`](../../docs/G9P-transport-identity-v1.md).
+
 ## Run
 
 From the repository root:
