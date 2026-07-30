@@ -25,6 +25,12 @@ test("TLS can be disabled explicitly for local development", () => {
   assert.equal(config.mysql.ssl, undefined);
 });
 
+test("connector metrics require an optional distinct long secret", () => {
+  assert.equal(loadConnectorConfig(baseEnvironment).metricsToken, undefined);
+  assert.equal(loadConnectorConfig({ ...baseEnvironment, CONNECTOR_METRICS_TOKEN: "metrics-token-123456" }).metricsToken, "metrics-token-123456");
+  assert.throws(() => loadConnectorConfig({ ...baseEnvironment, CONNECTOR_METRICS_TOKEN: "short" }));
+});
+
 test("table paths accept only safe one- or two-part identifiers", () => {
   assert.equal(quoteTablePath("provenance_outbox"), "`provenance_outbox`");
   assert.equal(quoteTablePath("audit.provenance_outbox"), "`audit`.`provenance_outbox`");

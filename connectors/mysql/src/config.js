@@ -20,6 +20,12 @@ function boolean(value, fallback, name) {
   throw new Error(`${name} must be true or false`);
 }
 
+function optionalToken(value, name) {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length < 16) throw new Error(`${name} must contain at least 16 characters when configured`);
+  return value;
+}
+
 export function loadConnectorConfig(environment = process.env) {
   const sslMode = environment.MYSQL_SSL_MODE ?? "required";
   if (!new Set(["required", "disabled"]).has(sslMode)) {
@@ -63,5 +69,6 @@ export function loadConnectorConfig(environment = process.env) {
     retryMaxMs: integer(environment.CONNECTOR_RETRY_MAX_MS, 60_000, "CONNECTOR_RETRY_MAX_MS", { min: 100, max: 86_400_000 }),
     healthHost: environment.CONNECTOR_HEALTH_HOST ?? "127.0.0.1",
     healthPort: integer(environment.CONNECTOR_HEALTH_PORT, 8_790, "CONNECTOR_HEALTH_PORT", { min: 1, max: 65_535 }),
+    metricsToken: optionalToken(environment.CONNECTOR_METRICS_TOKEN, "CONNECTOR_METRICS_TOKEN"),
   });
 }

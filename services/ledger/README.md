@@ -24,6 +24,8 @@ Default endpoints:
 
 ```text
 GET  /health
+GET  /ready
+GET  /metrics
 GET  /v1/info
 POST /v1/events:batch
 POST /v2/events:batch
@@ -31,7 +33,7 @@ GET  /v2/receipts/<event-id>?recordHash=<expected-record-hash>
 POST /v1/admin/routing-transitions
 ```
 
-`/v1/info` and ingestion require the configured bearer token. Event submissions are idempotent by `eventId` and canonical event content.
+`/v1/info`, `/metrics` and ingestion require the configured bearer token. `/health` is process liveness; `/ready` fails after a recorded background ledger error. Metrics are aggregate Prometheus text without customer-controlled labels. Event submissions are idempotent by `eventId` and canonical event content. See [`docs/G9P-observability-v1.md`](../../docs/G9P-observability-v1.md).
 
 ## Durable accepted-event intake
 

@@ -29,7 +29,7 @@ async function main() {
     retryBaseMs: config.retryBaseMs,
     retryMaxMs: config.retryMaxMs,
   });
-  const health = createHealthServer({ worker, repository });
+  const health = createHealthServer({ worker, repository, metricsToken: config.metricsToken });
   const healthAddress = await health.listen({ host: config.healthHost, port: config.healthPort });
   await repository.ping();
 

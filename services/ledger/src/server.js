@@ -3,6 +3,8 @@ import { createServer } from "node:http";
 
 import { G9pError } from "@glare9/provenance";
 
+import { ledgerMetrics } from "./metrics.js";
+
 function tokenMatches(header, expectedToken) {
   if (typeof header !== "string" || !header.startsWith("Bearer ")) return false;
   const supplied = Buffer.from(header.slice(7), "utf8");
@@ -14,6 +16,16 @@ function sendJson(response, status, payload) {
   const bytes = Buffer.from(JSON.stringify(payload), "utf8");
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
+    "content-length": bytes.length,
+    "cache-control": "no-store",
+  });
+  response.end(bytes);
+}
+
+function sendText(response, status, contentType, text) {
+  const bytes = Buffer.from(text, "utf8");
+  response.writeHead(status, {
+    "content-type": contentType,
     "content-length": bytes.length,
     "cache-control": "no-store",
   });
@@ -69,6 +81,12 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
         return;
       }
 
+      if (request.method === "GET" && url.pathname === "/ready") {
+        const ready = ledger.info().backgroundError === null;
+        sendJson(response, ready ? 200 : 503, { status: ready ? "ready" : "not-ready" });
+        return;
+      }
+
       if (request.method === "POST" && url.pathname === "/v1/admin/routing-transitions") {
         if (adminToken === undefined) {
           sendJson(response, 404, { code: "NOT_FOUND", message: "Route not found", retryable: false, requestId });
@@ -99,6 +117,11 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
 
       if (request.method === "GET" && url.pathname === "/v1/info") {
         sendJson(response, 200, { contractVersion: 1, ...ledger.info() });
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === "/metrics") {
+        sendText(response, 200, "text/plain; version=0.0.4; charset=utf-8", ledgerMetrics(ledger.info()));
         return;
       }
 

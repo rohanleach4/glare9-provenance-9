@@ -171,6 +171,32 @@ export class MySqlOutboxRepository {
     await this.pool.query("SELECT 1");
   }
 
+  async operationalMetrics() {
+    const [[row]] = await this.pool.query(`
+      SELECT
+        SUM(CASE WHEN delivered_at IS NULL AND dead_lettered_at IS NULL
+          AND available_at <= UTC_TIMESTAMP(6)
+          AND (lease_expires_at IS NULL OR lease_expires_at <= UTC_TIMESTAMP(6)) THEN 1 ELSE 0 END) AS ready_count,
+        SUM(CASE WHEN delivered_at IS NULL AND dead_lettered_at IS NULL
+          AND lease_expires_at > UTC_TIMESTAMP(6) THEN 1 ELSE 0 END) AS leased_count,
+        SUM(CASE WHEN delivered_at IS NOT NULL THEN 1 ELSE 0 END) AS delivered_count,
+        SUM(CASE WHEN dead_lettered_at IS NOT NULL THEN 1 ELSE 0 END) AS dead_lettered_count,
+        COALESCE(TIMESTAMPDIFF(MICROSECOND,
+          MIN(CASE WHEN delivered_at IS NULL AND dead_lettered_at IS NULL
+            AND available_at <= UTC_TIMESTAMP(6)
+            AND (lease_expires_at IS NULL OR lease_expires_at <= UTC_TIMESTAMP(6)) THEN available_at END),
+          UTC_TIMESTAMP(6)) / 1000000, 0) AS oldest_ready_age_seconds
+      FROM ${this.table}
+    `);
+    return {
+      readyCount: Number(row.ready_count ?? 0),
+      leasedCount: Number(row.leased_count ?? 0),
+      deliveredCount: Number(row.delivered_count ?? 0),
+      deadLetteredCount: Number(row.dead_lettered_count ?? 0),
+      oldestReadyAgeSeconds: Number(row.oldest_ready_age_seconds ?? 0),
+    };
+  }
+
   async close() {
     await this.pool.end();
   }

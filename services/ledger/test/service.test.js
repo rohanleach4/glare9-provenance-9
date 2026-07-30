@@ -800,3 +800,26 @@ test("unexpected request failures do not disclose payloads or credentials", asyn
     await service.close();
   }
 });
+
+test("liveness, readiness and authenticated metrics expose bounded operational state", async () => {
+  await fixture(async ({ service }) => {
+    const address = service.server.address();
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+    const health = await fetch(`${baseUrl}/health`);
+    assert.equal(health.status, 200);
+    assert.deepEqual(await health.json(), { status: "ok" });
+    const ready = await fetch(`${baseUrl}/ready`);
+    assert.equal(ready.status, 200);
+    assert.deepEqual(await ready.json(), { status: "ready" });
+    assert.equal((await fetch(`${baseUrl}/metrics`)).status, 401);
+    const metrics = await fetch(`${baseUrl}/metrics`, {
+      headers: { authorization: "Bearer test-ledger-token" },
+    });
+    assert.equal(metrics.status, 200);
+    assert.match(metrics.headers.get("content-type"), /text\/plain/u);
+    const body = await metrics.text();
+    assert.match(body, /g9p_ledger_ready 1/u);
+    assert.match(body, /g9p_ledger_accepted_events 0/u);
+    assert.equal(body.includes("test-ledger-token"), false);
+  });
+});

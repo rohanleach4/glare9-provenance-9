@@ -43,7 +43,10 @@ Health endpoints default to:
 ```text
 http://127.0.0.1:8790/health
 http://127.0.0.1:8790/ready
+http://127.0.0.1:8790/metrics
 ```
+
+Health and readiness responses are deliberately minimal. Metrics are disabled unless `CONNECTOR_METRICS_TOKEN` is configured and then require that bearer token. They include worker counters plus schema-neutral outbox state and oldest-ready age. See [`docs/G9P-observability-v1.md`](../../docs/G9P-observability-v1.md).
 
 ## Application write
 

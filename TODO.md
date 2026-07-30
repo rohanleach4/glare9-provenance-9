@@ -74,11 +74,11 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 
 ## Operations and release
 
-- [ ] Define supported deployment topologies, capacity limits and availability objectives.
-- [ ] Add health, readiness, metrics and alerting suitable for unattended operation.
-- [ ] Write runbooks for key compromise, corrupt storage, missing segments, failed witnesses and connector backlog.
+- [x] Define the supported experimental single-writer topology, explicit unsupported topologies, measured capacity guidance and integrity-first availability objectives without claiming an SLA.
+- [x] Add minimal liveness, dependency-aware readiness, authenticated aggregate Prometheus metrics and initial alert rules for ledger and connector operation.
+- [x] Write evidence-preserving runbooks for key compromise, corrupt storage, missing segments, unimplemented-witness gaps and connector backlog.
 - [ ] Define privacy, retention, deletion-reference and customer-content handling policies.
-- [ ] Produce administrator, operator, verifier and incident-response documentation.
+- [x] Produce a consolidated administrator, operator, verifier and incident-response manual linked to the detailed procedures.
 - [ ] Establish versioning, changelog, release-signing, SBOM and reproducible-build procedures.
 - [ ] Complete a production-readiness review and record approval of every deferred item.
 - [ ] Run a non-production pilot and recovery exercise before accepting production evidence.

@@ -92,6 +92,10 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-development-ci-v1.md`](./docs/G9P-development-ci-v1.md) — supported runtime and automated CI/security checks
 - [`docs/G9P-quality-hardening-v1.md`](./docs/G9P-quality-hardening-v1.md) — enforced coverage, property testing and bounded fuzzing
 - [`docs/G9P-performance-baseline-v1.md`](./docs/G9P-performance-baseline-v1.md) — end-to-end performance harness and measured baseline
+- [`docs/G9P-deployment-operations-v1.md`](./docs/G9P-deployment-operations-v1.md) — supported topology, capacity and availability profile
+- [`docs/G9P-observability-v1.md`](./docs/G9P-observability-v1.md) — health, readiness, metrics and alerting
+- [`docs/G9P-incident-runbooks-v1.md`](./docs/G9P-incident-runbooks-v1.md) — evidence-preserving incident procedures
+- [`docs/G9P-operations-manual-v1.md`](./docs/G9P-operations-manual-v1.md) — administrator, operator, verifier and responder manual
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open-source licence has not yet been selected or granted. Apache 2.0 is the current adoption-first preference, subject to formal approval.

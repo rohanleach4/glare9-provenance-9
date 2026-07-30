@@ -270,4 +270,8 @@ The licence remains to be formally selected. Apache 2.0 is the current adoption-
 - `docs/G9P-connector-assurance-v1.md`: reusable connector contract and deterministic fault matrix
 - `docs/G9P-quality-hardening-v1.md`: enforced coverage, property testing and bounded fuzzing profile
 - `docs/G9P-performance-baseline-v1.md`: end-to-end performance harness and measured baseline
+- `docs/G9P-deployment-operations-v1.md`: supported topology, capacity and availability profile
+- `docs/G9P-observability-v1.md`: health, readiness, metrics and alerting profile
+- `docs/G9P-incident-runbooks-v1.md`: evidence-preserving incident procedures
+- `docs/G9P-operations-manual-v1.md`: role-based operations manual
 - `Global-readme.md`: ignored local build instructions
