@@ -156,7 +156,7 @@ The current suite covers:
 - Strict accepted/provisional/sealed receipt schemas and authenticated monotonic polling
 - Accepted-first connector custody transfer and lost-acknowledgement replay
 - Signed transition barriers, credential separation, retry idempotency, missing-head rejection and epoch activation recovery
-- Injected intake-append, compression, file-sync, directory-sync, promotion and acknowledgement failures
+- Injected intake-append, both compression boundaries, and every sealed-file open, write, file-sync, create-only promotion, directory-sync and cleanup boundary
 - Restart invariants before and after signed routing-epoch publication
 - Authenticated ingestion and idempotent receipt replay
 - Event-index reconstruction from verified segments
@@ -178,9 +178,11 @@ The opt-in test creates and drops only a uniquely named temporary outbox table. 
 
 ### Fault injection
 
-The ledger service exposes narrowly named `testFaultInjector` hooks only through direct construction in the test process. Production configuration and HTTP requests cannot enable them. The suite interrupts durable intake, compression, sealed-file synchronisation, create-only promotion, response acknowledgement and routing-epoch publication.
+The ledger service exposes narrowly named `testFaultInjector` hooks only through direct construction in the test process. Production configuration and HTTP requests cannot enable them. The suite interrupts durable intake, both sides of compression, every sealed-file boundary, response acknowledgement and routing-epoch publication.
 
-Every injected case restarts from the same filesystem state and checks that an event is retained or sealed exactly once. Active-state injection covers file synchronisation, promotion and directory synchronisation for completed compressed provisional blocks. Transition tests cover both sides of the publication boundary: before publication the old epoch remains authoritative; after publication restart must activate the signed new epoch. These deterministic tests do not replace future abrupt-process, filesystem, power-loss or hardware fault testing.
+The sealing matrix inspects the interrupted filesystem state before restart, including whether the final and provisional names exist. Where hard-link promotion has occurred, it confirms that both names contain identical bytes and identify the same inode. Every case then restarts from that state and checks that the event is retained or sealed exactly once, durable intake is reconciled and no segment provisional file remains. Active-state injection covers file synchronisation, promotion and directory synchronisation for completed compressed provisional blocks. Transition tests cover both sides of the publication boundary: before publication the old epoch remains authoritative; after publication restart must activate the signed new epoch.
+
+See `docs/G9P-sealing-crash-safety-v1.md` for the full boundary matrix, recovery invariants and assurance limits. Deterministic injection does not replace deployment-specific abrupt-process, filesystem, power-loss or hardware fault testing.
 
 The repository should eventually provide additional stable commands for:
 

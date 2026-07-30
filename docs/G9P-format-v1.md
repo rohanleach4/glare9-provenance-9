@@ -220,6 +220,8 @@ Writers create an exclusive `.g9p.part` file, synchronise its complete contents 
 
 The prototype uses an atomic hard-link promotion on the local filesystem. A future storage abstraction must preserve the same create-only finalisation property on other storage systems.
 
+The reference service's interruption states and exactly-once recovery demonstration are recorded in `G9P-sealing-crash-safety-v1.md`. This is implementation assurance and does not alter the version 1 byte format.
+
 ## Known version 1 prototype boundaries
 
 - The standalone core writer accepts a bounded segment's events in memory; the ledger service manages long-running bounded active blocks and persists completed compressed blocks provisionally before sealing.

@@ -18,7 +18,7 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 
 - [x] Replace in-memory segment batching with a bounded active-block and active-segment lifecycle.
 - [x] Set measured block-size, segment-size and segment-age deployment defaults with the reproducible lifecycle benchmark and sizing record.
-- [ ] Demonstrate crash safety at every sealing step, including file and directory synchronisation and create-only promotion.
+- [x] Demonstrate crash safety at every local-filesystem sealing boundary with deterministic state inspection and exactly-once restart recovery, including file and directory synchronisation and create-only promotion; deployment-specific power-loss qualification remains operational work.
 - [x] Define recovery behavior for abandoned `.g9p.part` files and interrupted writes.
 - [ ] Add a storage abstraction that preserves create-only sealing and independent verification.
 - [ ] Test backup, restore, retention and disaster recovery without rewriting sealed bytes.

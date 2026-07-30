@@ -251,4 +251,5 @@ The licence remains to be formally selected. Apache 2.0 is the current adoption-
 - `Test-readme.md`: verification and testing strategy
 - `docs/G9P-ingestion-receipts-v2.md`: stable accepted-first ingestion and receipt polling
 - `docs/G9P-lifecycle-sizing-v1.md`: reproducible lifecycle benchmark and measured deployment defaults
+- `docs/G9P-sealing-crash-safety-v1.md`: local sealing-boundary state and recovery demonstration
 - `Global-readme.md`: ignored local build instructions

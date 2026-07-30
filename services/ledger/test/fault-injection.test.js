@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -73,6 +73,27 @@ async function rebuildAndAssertExactlyOnce({ directory, signer, topologyAuthorit
   return { rebuilt, receipt: first };
 }
 
+async function segmentArtifacts(directory) {
+  const root = join(directory, "segments");
+  const entries = await readdir(root, { recursive: true });
+  const sealedRelative = entries.filter((name) => name.endsWith(".g9p"));
+  const partRelative = entries.filter((name) => name.endsWith(".g9p.part"));
+  return {
+    sealed: sealedRelative.map((name) => join(root, name)),
+    parts: partRelative.map((name) => join(root, name)),
+  };
+}
+
+async function assertInterruptedSegmentState(directory, { sealed, part, linked = false }) {
+  const artifacts = await segmentArtifacts(directory);
+  assert.equal(artifacts.sealed.length, sealed, "unexpected sealed segment count at interruption");
+  assert.equal(artifacts.parts.length, part, "unexpected provisional segment count at interruption");
+  if (linked) {
+    assert.deepEqual(await readFile(artifacts.sealed[0]), await readFile(artifacts.parts[0]));
+    assert.equal((await stat(artifacts.sealed[0])).ino, (await stat(artifacts.parts[0])).ino);
+  }
+}
+
 test("fault after intake append is recovered without loss or duplication", async () => {
   await temporaryLedger(async ({ directory, signer, topologyAuthority, ledger }) => {
     await assert.rejects(
@@ -83,14 +104,19 @@ test("fault after intake append is recovered without loss or duplication", async
   }, { testFaultInjector: failOnce("intake.after-write") });
 });
 
-for (const stage of [
-  "segment.before-compression",
-  "sealed.after-file-sync",
-  "sealed.before-promotion",
-  "sealed.after-promotion",
-  "sealed.after-directory-sync",
+for (const boundary of [
+  { stage: "segment.before-compression", sealed: 0, part: 0 },
+  { stage: "segment.after-compression", sealed: 0, part: 0 },
+  { stage: "sealed.after-open", sealed: 0, part: 1 },
+  { stage: "sealed.after-write", sealed: 0, part: 1 },
+  { stage: "sealed.after-file-sync", sealed: 0, part: 1 },
+  { stage: "sealed.before-promotion", sealed: 0, part: 1 },
+  { stage: "sealed.after-promotion", sealed: 1, part: 1, linked: true },
+  { stage: "sealed.after-directory-sync", sealed: 1, part: 1, linked: true },
+  { stage: "sealed.after-part-removal", sealed: 1, part: 0 },
+  { stage: "sealed.after-cleanup-sync", sealed: 1, part: 0 },
 ]) {
-  test(`fault at ${stage} recovers retained intake exactly once`, async () => {
+  test(`fault at ${boundary.stage} recovers retained intake exactly once`, async () => {
     const onlySegmentFiles = (context) => context.outputPath?.includes("/segments/") ?? true;
     await temporaryLedger(async ({ directory, signer, topologyAuthority, ledger }) => {
       await ledger.acceptBatch([event()]);
@@ -98,8 +124,10 @@ for (const stage of [
         ledger.drainAccepted(),
         (error) => new Set(["SEGMENT_WRITE", "TEST_FAULT_INJECTED"]).has(error.code),
       );
+      await assertInterruptedSegmentState(directory, boundary);
       await rebuildAndAssertExactlyOnce({ directory, signer, topologyAuthority });
-    }, { testFaultInjector: failOnce(stage, onlySegmentFiles) });
+      await assertInterruptedSegmentState(directory, { sealed: 1, part: 0 });
+    }, { testFaultInjector: failOnce(boundary.stage, onlySegmentFiles) });
   });
 }
 

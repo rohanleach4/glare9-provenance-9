@@ -75,6 +75,7 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-routing-epochs-v1.md`](./docs/G9P-routing-epochs-v1.md) — signed routing epochs and forward-only resharding protocol
 - [`docs/G9P-ingestion-receipts-v2.md`](./docs/G9P-ingestion-receipts-v2.md) — stable accepted-first ingestion and receipt-polling contract
 - [`docs/G9P-lifecycle-sizing-v1.md`](./docs/G9P-lifecycle-sizing-v1.md) — measured block, segment and age defaults
+- [`docs/G9P-sealing-crash-safety-v1.md`](./docs/G9P-sealing-crash-safety-v1.md) — sealing-boundary state and recovery demonstration
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open-source licence has not yet been selected or granted. Apache 2.0 is the current adoption-first preference, subject to formal approval.
