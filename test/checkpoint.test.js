@@ -77,3 +77,26 @@ test("checkpoint and witness signature mutation is rejected", async () => {
     await assert.rejects(import("../src/checkpoint.js").then(({ verifyCheckpointBytes }) => verifyCheckpointBytes(bytes)), (error) => error.code === "CHECKPOINT_SIGNATURE");
   });
 });
+
+test("threshold verification rejects mixed checkpoints and ambiguous policy membership", async () => {
+  await temporary(async (directory) => {
+    const publisher = generateSigner();
+    const witness = generateSigner();
+    const checkpointPaths = [join(directory, "checkpoint-a.g9p"), join(directory, "checkpoint-b.g9p")];
+    for (let index = 0; index < checkpointPaths.length; index += 1) {
+      await writeCheckpoint({ outputPath: checkpointPaths[index], ledgerId: "ambiguity-ledger", checkpointNumber: index, previousCheckpointHash: index === 0 ? null : Buffer.alloc(32, 8), routingEpochNumber: 0, routingEpochHash: Buffer.alloc(32, 9), shardHeads: [{ epochNumber: 0, shardId: "shard-0000", segmentNumber: null, segmentHash: null }], publisher, createdAt: time });
+    }
+    const checkpointA = await readFile(checkpointPaths[0]);
+    const checkpointB = await readFile(checkpointPaths[1]);
+    const receiptPath = join(directory, "witness-b.g9p");
+    await writeWitnessReceipt({ outputPath: receiptPath, checkpointBytes: checkpointB, witness, observedAt: time, trustedPublisherKeyIds: [publisher.keyId] });
+    await assert.rejects(
+      verifyThresholdAttestation({ checkpointBytes: checkpointA, witnessReceiptBytes: [await readFile(receiptPath)], trustedPublisherKeyIds: [publisher.keyId], policy: { kind: "g9p-threshold-policy", version: 1, threshold: 1, witnessKeyIds: [witness.keyId] } }),
+      (error) => error.code === "THRESHOLD_NOT_MET",
+    );
+    await assert.rejects(
+      verifyThresholdAttestation({ checkpointBytes: checkpointA, witnessReceiptBytes: [], trustedPublisherKeyIds: [publisher.keyId], policy: { kind: "g9p-threshold-policy", version: 1, threshold: 1, witnessKeyIds: [witness.keyId, witness.keyId] } }),
+      (error) => error.code === "THRESHOLD_POLICY",
+    );
+  });
+});

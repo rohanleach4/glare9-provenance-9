@@ -54,6 +54,8 @@ export function loadLedgerConfig(environment = process.env) {
       requireClientCertificate,
     }),
     dataDirectory: resolve(environment.PROVENANCE_DATA_DIR ?? "runtime/ledger-service"),
+    segmentSigningKeyPath: optionalPath(environment.PROVENANCE_SEGMENT_SIGNING_KEY_PATH),
+    segmentTrustBundlePath: optionalPath(environment.PROVENANCE_SEGMENT_TRUST_BUNDLE_PATH),
     shardCount: integer(environment.PROVENANCE_SHARD_COUNT, 1, "PROVENANCE_SHARD_COUNT", { min: 1, max: 65_536 }),
     adoptLegacyRoutingHistory: boolean(environment.PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY, false, "PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY"),
     maxBatchEvents: integer(environment.PROVENANCE_MAX_BATCH_EVENTS, 500, "PROVENANCE_MAX_BATCH_EVENTS", { min: 1, max: 10_000 }),

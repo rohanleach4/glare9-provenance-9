@@ -1,22 +1,26 @@
 import { readFile } from "node:fs/promises";
 
 import { loadLedgerConfig } from "./config.js";
-import { loadOrCreateLocalCheckpointPublisher, loadOrCreateLocalSigner, loadOrCreateLocalTopologyAuthority } from "./key-store.js";
+import { loadExternalSigner, loadOrCreateLocalCheckpointPublisher, loadOrCreateLocalSigner, loadOrCreateLocalTopologyAuthority } from "./key-store.js";
 import { LocalLedger } from "./local-ledger.js";
 import { createLedgerServer } from "./server.js";
 
 async function main() {
   const config = loadLedgerConfig();
   const [signer, topologyAuthority, checkpointPublisher] = await Promise.all([
-    loadOrCreateLocalSigner(config.dataDirectory),
+    config.segmentSigningKeyPath === undefined ? loadOrCreateLocalSigner(config.dataDirectory) : loadExternalSigner(config.segmentSigningKeyPath),
     loadOrCreateLocalTopologyAuthority(config.dataDirectory),
     loadOrCreateLocalCheckpointPublisher(config.dataDirectory),
   ]);
+  const segmentTrustBundle = config.segmentTrustBundlePath === undefined
+    ? undefined
+    : JSON.parse(await readFile(config.segmentTrustBundlePath, "utf8"));
   const ledger = await new LocalLedger({
     dataDirectory: config.dataDirectory,
     signer,
     topologyAuthority,
     checkpointPublisher,
+    segmentTrustBundle,
     shardCount: config.shardCount,
     adoptLegacyRoutingHistory: config.adoptLegacyRoutingHistory,
     lifecycle: config.lifecycle,

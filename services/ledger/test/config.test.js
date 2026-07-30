@@ -83,3 +83,13 @@ test("bounded lifecycle limits have safe defaults and reject invalid values", ()
     /must be an integer/u,
   );
 });
+
+test("external segment signer and trust bundle paths are optional resolved configuration", () => {
+  const config = loadLedgerConfig({
+    ...baseEnvironment,
+    PROVENANCE_SEGMENT_SIGNING_KEY_PATH: "keys/successor.pk8",
+    PROVENANCE_SEGMENT_TRUST_BUNDLE_PATH: "trust/segments.json",
+  });
+  assert.equal(config.segmentSigningKeyPath.endsWith("/keys/successor.pk8"), true);
+  assert.equal(config.segmentTrustBundlePath.endsWith("/trust/segments.json"), true);
+});

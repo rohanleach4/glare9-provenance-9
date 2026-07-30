@@ -32,6 +32,10 @@ async function loadSigner(privateKeyPath) {
   };
 }
 
+export function loadExternalSigner(privateKeyPath) {
+  return loadSigner(privateKeyPath);
+}
+
 async function loadOrCreateNamedSigner(dataDirectory, name) {
   const keyDirectory = join(dataDirectory, "keys");
   const privateKeyPath = join(keyDirectory, `${name}.pk8`);

@@ -6,6 +6,8 @@ This candidate separates four roles: segment producer, topology authority, check
 
 Rotation is forward-only: register the successor, define its effective time/sequence, retain the predecessor for historical verification, and use new signatures after activation. Revocation records reason, effective time and scope without invalidating evidence created before the trusted compromise boundary. Verifiers require an external registration/revocation set and report signatures created during an uncertain compromise window separately.
 
+The reference service implements the first external-policy slice for segment producers: a versioned positional trust bundle can retain old key IDs for exact historical segment ranges and activate a successor for later ranges. The bundle is authenticated and approved out of band and creates no new `.g9p` profile. Signed registration containers and equivalent rotation support for topology, checkpoint and witness roles remain future protocol work.
+
 Customer-controlled event signing signs `SHA256-domain("customer-event-signature-v1", canonical-event-bytes)` with an externally registered key. A future event-envelope version will carry the registration reference, algorithm, key ID and signature; version 1 event bytes are not revised. Connectors must pass signatures opaquely and must not claim the source was authorized until trust policy validation succeeds.
 
 Production private keys must live behind an approved KMS, HSM or customer-controlled signer. The current local PKCS#8 key store is development-only. Provider selection must verify Ed25519 support, public-key export, stable key identifiers, authorization/audit logs, availability behavior, rotation and disaster recovery. That qualification remains open.

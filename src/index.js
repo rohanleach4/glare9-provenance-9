@@ -11,3 +11,4 @@ export { LocalFilesystemSealedStorage, requireSealedStorage, sealedStorageLimits
 export { createRoutingPolicy, routeEvent, ROUTING_POLICY_ID } from "./sharding.js";
 export { writeSegment } from "./segment-writer.js";
 export { verifySegment, verifySegmentBytes, verifierLimits } from "./segment-verifier.js";
+export { evaluateSegmentTrust, requireTrustedSegmentSigner, segmentTrustKeyIds, validateSegmentTrustBundle } from "./signer-trust.js";

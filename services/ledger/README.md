@@ -10,7 +10,9 @@ Copy `.env.example` to the ignored `.env` file and set a long random bearer toke
 cp services/ledger/.env.example services/ledger/.env
 ```
 
-The local service generates separate development Ed25519 segment-signing and topology-authority keys under its ignored data directory. That key store is not suitable for production.
+The local service generates separate development Ed25519 segment-signing and topology-authority keys under its ignored data directory. That key store is not suitable for production. An external Ed25519 PKCS#8 segment key can instead be selected with `PROVENANCE_SEGMENT_SIGNING_KEY_PATH`.
+
+Forward segment-key rotation uses `PROVENANCE_SEGMENT_TRUST_BUNDLE_PATH`, pointing to an external approved JSON bundle described in [`docs/G9P-signer-trust-operations-v1.md`](../../docs/G9P-signer-trust-operations-v1.md). Bindings assign old and successor key IDs to exact ledger/epoch/shard/segment ranges. Startup revalidates historical positions, and sealing rejects a current key outside its approved range. Bundle authentication and approval remain external operational responsibilities.
 
 For credential rotation, configure the new token first and retained old token second in `PROVENANCE_API_TOKENS`; administration uses the separate `PROVENANCE_ADMIN_TOKENS` set. Certificate/key paths enable TLS 1.3, while a client CA plus `PROVENANCE_TLS_REQUIRE_CLIENT_CERTIFICATE=true` enables mutual TLS. Private keys and credentials remain external ignored secrets. See [`docs/G9P-transport-identity-v1.md`](../../docs/G9P-transport-identity-v1.md).
 
@@ -139,6 +141,6 @@ The separately deployable reference witness is documented in [`services/witness/
 - The local signing key is not backed by a KMS or HSM.
 - The local topology-authority key is not backed by a KMS, HSM or customer approval policy.
 - The local checkpoint-publisher key is not backed by a KMS, HSM or customer approval policy.
-- Existing history is expected to use the current local signer.
+- Without an external segment trust bundle, existing history is expected to use the current local signer. With a bundle, every historical and next segment position must be explicitly trusted.
 - Transition administration currently uses one local topology-authority key and one bearer credential; threshold/customer authorization is not implemented.
 - Version 1 witness receipts verify checkpoint signatures and configured publisher trust; they do not assert a full independent traversal of referenced segment history.

@@ -53,6 +53,8 @@ Treat readers, decompressors, decoders, indexes and proof parsers as hostile-inp
 - Checkpoint missing a required shard
 - Insufficient witness threshold
 - Checkpoint and witness signature mutation, publisher/witness trust and duplicate-witness threshold handling
+- Forward segment-key rotation across restart, positional historical trust, rollback rejection and full offline chain verification
+- Mixed-checkpoint witness rejection and duplicate/unordered threshold membership rejection
 - Valid logical records in a physically altered container
 
 ### Connector contract tests

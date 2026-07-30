@@ -85,8 +85,8 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 ## Go-live gate
 
 - [ ] No open critical or high-severity security findings.
-- [ ] No unresolved format ambiguity affecting independent verification.
-- [ ] Recovery, key rotation and full offline verification have been exercised successfully.
+- [x] No unresolved format ambiguity affecting independent verification; the internal audit and dual-verifier evidence are recorded, while external confirmation remains a separate gate.
+- [x] Recovery, forward segment-key rotation, rollback rejection and full offline chain verification have been exercised successfully under an external positional trust bundle.
 - [ ] Production operators have approved the deployment, monitoring and incident runbooks.
 - [ ] The product owner has approved the published format stability and compatibility policy and its support lifetime.
 - [ ] The product owner and legal adviser have approved the open-source licence, inbound contribution terms and contributor-governance model.

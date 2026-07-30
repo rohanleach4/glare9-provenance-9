@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   createRoutingPolicy,
   domainHash,
+  evaluateSegmentTrust,
   fromHex,
   generateSigner,
   G9pError,
@@ -165,6 +166,55 @@ test("ledger rebuilds and preserves idempotency through an injected sealed-stora
     const [replayed] = await rebuilt.ingestBatch([event()]);
     assert.deepEqual(replayed, original);
     await rebuilt.close({ seal: false });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("forward signer rotation preserves historical trust and rejects rollback signing", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "g9p-ledger-signer-rotation-"));
+  const oldSigner = generateSigner();
+  const newSigner = generateSigner();
+  const topologyAuthority = generateSigner();
+  const ledgerId = "connector-test-ledger";
+  const bundle = {
+    kind: "g9p-segment-trust-bundle",
+    version: 1,
+    bundleId: "rotation-exercise-v1",
+    bindings: [
+      { ledgerId, epochNumber: 0, shardId: "shard-0000", firstSegmentNumber: 0, lastSegmentNumber: 0, keyId: oldSigner.keyId, status: "trusted" },
+      { ledgerId, epochNumber: 0, shardId: "shard-0000", firstSegmentNumber: 1, lastSegmentNumber: null, keyId: newSigner.keyId, status: "trusted" },
+    ],
+  };
+  try {
+    const original = await new LocalLedger({ dataDirectory: directory, signer: oldSigner, topologyAuthority }).initialize();
+    await original.ingestBatch([event({ eventId: "before-key-rotation" })]);
+    await original.close({ seal: false });
+
+    const rotated = await new LocalLedger({ dataDirectory: directory, signer: newSigner, topologyAuthority, segmentTrustBundle: bundle }).initialize();
+    await rotated.ingestBatch([event({ eventId: "after-key-rotation" })]);
+    await rotated.close({ seal: false });
+
+    let previousSegmentHash = null;
+    for (let segmentNumber = 0; segmentNumber < 2; segmentNumber += 1) {
+      const verified = await verifySegment(segmentPath(directory, ledgerId, { segmentNumber }), {
+        trustedKeyIds: new Set([oldSigner.keyId, newSigner.keyId]),
+        requireTrustedSigner: true,
+        expectedPreviousSegmentHash: previousSegmentHash,
+        includeEvents: false,
+      });
+      assert.equal(evaluateSegmentTrust(bundle, { ledgerId, epochNumber: 0, shardId: "shard-0000", segmentNumber, keyId: verified.signerKeyId }).status, "trusted");
+      previousSegmentHash = fromHex(verified.segmentHash, 32);
+    }
+
+    const recovered = await new LocalLedger({ dataDirectory: directory, signer: newSigner, topologyAuthority, segmentTrustBundle: bundle }).initialize();
+    assert.equal(recovered.info().knownEvents, 2);
+    assert.equal(recovered.info().segmentTrustBundleId, "rotation-exercise-v1");
+    await recovered.close({ seal: false });
+
+    const rollback = await new LocalLedger({ dataDirectory: directory, signer: oldSigner, topologyAuthority, segmentTrustBundle: bundle }).initialize();
+    await assert.rejects(rollback.ingestBatch([event({ eventId: "rollback-key-use" })]), (error) => error.code === "SEGMENT_SIGNER_TRUST");
+    await rollback.close({ seal: false });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

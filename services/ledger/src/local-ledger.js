@@ -11,12 +11,15 @@ import {
   G9pError,
   LocalFilesystemSealedStorage,
   requireSealedStorage,
+  requireTrustedSegmentSigner,
   routeEvent,
   toHex,
   validateEvent,
   verifyRoutingEpochBytes,
   verifyCheckpointBytes,
   verifySegmentBytes,
+  segmentTrustKeyIds,
+  validateSegmentTrustBundle,
   writeRoutingEpoch,
   writeCheckpoint,
   writeSegment,
@@ -116,6 +119,7 @@ export class LocalLedger {
     signer,
     topologyAuthority,
     checkpointPublisher = signer,
+    segmentTrustBundle,
     shardCount = 1,
     adoptLegacyRoutingHistory = false,
     lifecycle,
@@ -134,6 +138,8 @@ export class LocalLedger {
     this.signer = signer;
     this.topologyAuthority = topologyAuthority;
     this.checkpointPublisher = checkpointPublisher;
+    this.segmentTrustBundle = segmentTrustBundle === undefined ? undefined : validateSegmentTrustBundle(segmentTrustBundle);
+    this.segmentTrustedKeyIds = this.segmentTrustBundle === undefined ? new Set([signer.keyId]) : segmentTrustKeyIds(this.segmentTrustBundle);
     this.adoptLegacyRoutingHistory = adoptLegacyRoutingHistory;
     this.testFaultInjector = testFaultInjector;
     this.sealedStorage = requireSealedStorage(sealedStorage
@@ -352,7 +358,7 @@ export class LocalLedger {
       const fileName = key.slice(key.lastIndexOf("/") + 1);
       const verified = await verifySegmentBytes(await this.sealedStorage.read(key), {
         source: key,
-        trustedKeyIds: new Set([this.signer.keyId]),
+        trustedKeyIds: this.segmentTrustedKeyIds,
         requireTrustedSigner: true,
         expectedPreviousSegmentHash: previousSegmentHash,
         expectedShardId: shardId,
@@ -372,6 +378,9 @@ export class LocalLedger {
         throw new G9pError("LEDGER_DIRECTORY", `Segment ${key} is stored under the wrong ledger storage prefix`);
       }
       const epochNumber = routingEpoch?.epochNumber ?? 0;
+      if (this.segmentTrustBundle !== undefined) {
+        requireTrustedSegmentSigner(this.segmentTrustBundle, { ledgerId: verified.ledgerId, epochNumber, shardId, segmentNumber: verified.segmentNumber, keyId: verified.signerKeyId });
+      }
       const signedEpoch = routingEpoch
         ?? this.routingEpochDirectories.get(epochStorageKey(ledgerDirectory, 0));
       const expectedPolicy = signedEpoch?.routingPolicy ?? this.defaultRoutingPolicy;
@@ -488,7 +497,7 @@ export class LocalLedger {
           if (head.segmentNumber === null) continue;
           const segmentKey = `segments/${ledgerDirectory}/${epochDirectoryName(head.epochNumber)}/${head.shardId}/${segmentFileName(head.segmentNumber)}`;
           const segment = await verifySegmentBytes(await this.sealedStorage.read(segmentKey), {
-            trustedKeyIds: new Set([this.signer.keyId]),
+            trustedKeyIds: this.segmentTrustedKeyIds,
             requireTrustedSigner: true,
             expectedLedgerId: ledgerId,
             expectedShardId: head.shardId,
@@ -496,6 +505,9 @@ export class LocalLedger {
             expectedRoutingEpochHash: fromHex(verified.routingEpochHash, 32),
             includeEvents: false,
           });
+          if (this.segmentTrustBundle !== undefined) {
+            requireTrustedSegmentSigner(this.segmentTrustBundle, { ledgerId, epochNumber: head.epochNumber, shardId: head.shardId, segmentNumber: head.segmentNumber, keyId: segment.signerKeyId });
+          }
           if (segment.segmentNumber !== head.segmentNumber || segment.segmentHash !== head.segmentHash) {
             throw new G9pError("CHECKPOINT_HEAD", `Checkpoint ${key} references the wrong segment commitment for ${head.shardId}`);
           }
@@ -889,6 +901,9 @@ export class LocalLedger {
     const routingEpoch = this.routingEpochs.get(active.ledgerId);
     const records = active.blocks.flatMap((block) => block.records);
     const storageKey = `${active.directory}/${segmentFileName(active.segmentNumber)}`;
+    if (this.segmentTrustBundle !== undefined) {
+      requireTrustedSegmentSigner(this.segmentTrustBundle, { ledgerId: active.ledgerId, epochNumber: active.epochNumber, shardId: active.shardId, segmentNumber: active.segmentNumber, keyId: this.signer.keyId });
+    }
     const result = await writeSegment({
       sealedStorage: this.sealedStorage,
       storageKey,
@@ -1111,6 +1126,7 @@ export class LocalLedger {
       checkpointPublisherKeyId: this.checkpointPublisher.keyId,
       knownRoutingLedgers: this.routingEpochs.size,
       signerKeyId: this.signer.keyId,
+      segmentTrustBundleId: this.segmentTrustBundle?.bundleId ?? null,
       knownEvents: this.eventIndex.size,
       acceptedEvents: this.pendingIndex.size,
       acceptedBytes: this.pendingBytes,
