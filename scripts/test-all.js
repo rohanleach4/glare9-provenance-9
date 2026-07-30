@@ -1,15 +1,20 @@
 import { spawnSync } from "node:child_process";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-const commands = [
-  ["test"],
-  ["test", "--workspace=@glare9/provenance-connector-contract"],
-  ["test", "--workspace=@glare9/provenance-ledger-service"],
-  ["test", "--workspace=@glare9/provenance-connector-mysql"],
+const suiteDirectories = [
+  "test",
+  "packages/connector-contract/test",
+  "services/ledger/test",
+  "connectors/mysql/test",
 ];
 
-for (const arguments_ of commands) {
-  const result = spawnSync(npm, arguments_, {
+for (const directory of suiteDirectories) {
+  const files = readdirSync(join(process.cwd(), directory))
+    .filter((name) => name.endsWith(".test.js"))
+    .sort()
+    .map((name) => join(directory, name));
+  const result = spawnSync(process.execPath, ["--test", ...files], {
     cwd: process.cwd(),
     stdio: "inherit",
     env: process.env,

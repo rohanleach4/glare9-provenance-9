@@ -70,7 +70,9 @@ The `event_id` column and `envelope.eventId` must be identical. The envelope mus
 - Locks are released before calling the ledger service.
 - Delivery is at least once.
 - Ledger event IDs make retries idempotent.
-- Sealed receipts are stored in the outbox row.
+- Stable version 2 lifecycle receipts are stored in the outbox row.
+- Durable `accepted` transfers custody to the ledger and marks the outbox row delivered.
+- Later `provisional` or `sealed` state can be polled from the ledger using the event ID and expected record hash.
 - Permanent failures and exhausted retries are dead-lettered.
 - Delivered and dead-lettered rows are retained until an explicit customer retention process removes them.
 

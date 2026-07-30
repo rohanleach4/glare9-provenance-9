@@ -37,6 +37,8 @@ Connectors are independently deployable services and npm workspace packages. The
 
 The shared contract lives under `packages/connector-contract`. Database implementations live under `connectors/<database>` and communicate with `services/ledger` over authenticated HTTP. No connector imports or writes the `.g9p` format directly.
 
+Stable accepted-first receipt fields, polling and error semantics are specified in [`docs/G9P-ingestion-receipts-v2.md`](./docs/G9P-ingestion-receipts-v2.md).
+
 ## MySQL connector
 
 ### Implementation status
@@ -54,7 +56,7 @@ The first connector iteration is implemented in `connectors/mysql` using the mai
 - `/health` and `/ready` endpoints
 - Unit and optional real-MySQL integration tests
 
-The first ledger service seals each submitted shard group synchronously and returns sealed receipts. A later service may introduce separate durable `accepted` and `sealed` stages without changing the database-specific worker.
+The version 1 ledger contract seals each submitted shard group synchronously and remains available for compatibility. The stable version 2 accepted-first contract allows bounded active segments to span requests and exposes `accepted`, `provisional`, and `sealed` states with authenticated polling. The MySQL worker uses version 2: durable `accepted` transfers custody to the ledger and allows the outbox row to be marked delivered. Later sealed finality remains queryable from the ledger by event ID and expected record hash. This requires no access to customer business tables.
 
 ### MySQL Workbench development rule
 
@@ -113,12 +115,12 @@ The connector then:
 3. Assigns one expiring lease to the selected batch.
 4. Commits and releases all row locks.
 5. Sends the envelopes to the Provenance ingestion service outside the transaction.
-6. Receives one sealed receipt per event.
-7. Persists those receipts in a second short transaction.
+6. Receives one validated accepted-first lifecycle receipt per event.
+7. Persists those receipts in a second short transaction; an `accepted` receipt is sufficient to transfer custody to the ledger.
 8. Retries transient failures with exponential delay.
 9. Dead-letters permanent failures or rows exceeding the attempt limit.
 
-If the connector crashes after the ledger seals an event but before the receipt is stored, the lease expires and the event is submitted again. The ledger returns the existing receipt when the same `eventId` and content are repeated. Conflicting reuse of an event ID is rejected and dead-lettered.
+If the connector crashes after the ledger accepts an event but before the receipt is stored, the lease expires and the event is submitted again. The ledger returns the current lifecycle receipt when the same `eventId` and content are repeated. Conflicting reuse of an event ID is rejected and dead-lettered.
 
 The first implementation targets modern MySQL/InnoDB deployments supporting `SKIP LOCKED`. The network request is never made while MySQL locks are held.
 
@@ -196,7 +198,7 @@ Connectors must be designed for:
 
 No connector may report success merely because an event entered a local queue. Status must distinguish queued, accepted, sealed and witnessed.
 
-The current synchronous service persists a `sealed` receipt. `accepted` and `witnessed` receipt stages are reserved for later service iterations.
+The current MySQL connector persists the version 2 receipt returned at custody transfer, normally `accepted` or `provisional`. Sealed state can be polled from the ledger without retaining the MySQL lease. Witnessed receipts and optional background finality mirroring remain later work.
 
 ## Security requirements
 

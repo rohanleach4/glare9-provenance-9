@@ -1,5 +1,5 @@
 import { encodeCanonical } from "./codec/canonical.js";
-import { compressBlock, ZSTD_PROFILE } from "./compression.js";
+import { compressBlock, decompressBlock, ZSTD_PROFILE } from "./compression.js";
 import {
   domainHash,
   publicKeyId,
@@ -29,14 +29,29 @@ function hashBytes(bytes) {
   return Uint8Array.from(bytes);
 }
 
-function partitionRecords(records, targetBytes) {
+function partitionRecords(records, targetBytes, maxRecords, blockRecordCounts) {
+  if (blockRecordCounts !== undefined) {
+    invariant(Array.isArray(blockRecordCounts) && blockRecordCounts.length > 0, "BLOCK_PARTITION", "blockRecordCounts must contain at least one block");
+    invariant(blockRecordCounts.every((count) => Number.isSafeInteger(count) && count > 0), "BLOCK_PARTITION", "Every explicit block record count must be a positive safe integer");
+    invariant(blockRecordCounts.reduce((total, count) => total + count, 0) === records.length, "BLOCK_PARTITION", "Explicit block record counts must cover every segment record exactly once");
+    let offset = 0;
+    return blockRecordCounts.map((count) => {
+      const block = records.slice(offset, offset + count).map((record) => ({
+        ...record,
+        framed: frameRecord(record.bytes),
+      }));
+      offset += count;
+      return block;
+    });
+  }
+
   const blocks = [];
   let current = [];
   let currentBytes = 0;
 
   for (const record of records) {
     const framed = frameRecord(record.bytes);
-    if (current.length > 0 && currentBytes + framed.length > targetBytes) {
+    if (current.length > 0 && (currentBytes + framed.length > targetBytes || current.length >= maxRecords)) {
       blocks.push(current);
       current = [];
       currentBytes = 0;
@@ -59,12 +74,19 @@ export async function writeSegment({
   signer,
   createdAt = new Date().toISOString(),
   blockTargetBytes = DEFAULT_BLOCK_TARGET,
+  blockMaxRecords = Number.MAX_SAFE_INTEGER,
+  blockRecordCounts,
+  precompressedBlocks,
   maxRecordBytes = DEFAULT_MAX_RECORD,
   testFaultInjector,
 }) {
   invariant(Array.isArray(events) && events.length > 0, "SEGMENT_EVENTS", "A segment requires at least one event");
   invariant(Number.isSafeInteger(segmentNumber) && segmentNumber >= 0, "SEGMENT_NUMBER", "segmentNumber must be a non-negative safe integer");
   invariant(Number.isSafeInteger(blockTargetBytes) && blockTargetBytes >= 1024, "BLOCK_TARGET", "blockTargetBytes must be at least 1,024 bytes");
+  invariant(Number.isSafeInteger(blockMaxRecords) && blockMaxRecords >= 1, "BLOCK_RECORD_LIMIT", "blockMaxRecords must be a positive safe integer");
+  if (precompressedBlocks !== undefined) {
+    invariant(Array.isArray(precompressedBlocks) && Array.isArray(blockRecordCounts) && precompressedBlocks.length === blockRecordCounts.length, "BLOCK_PRECOMPRESSED", "precompressedBlocks requires one entry for every explicit block");
+  }
   invariant(Number.isSafeInteger(maxRecordBytes) && maxRecordBytes >= blockTargetBytes, "RECORD_LIMIT", "maxRecordBytes must be at least blockTargetBytes");
   invariant(signer?.algorithm === "ed25519" && signer.privateKey && signer.publicKeyDer instanceof Uint8Array, "SEGMENT_SIGNER", "An Ed25519 signer is required");
   invariant(signer.keyId === publicKeyId(signer.publicKeyDer), "SEGMENT_SIGNER_ID", "Signer keyId does not match its public key");
@@ -132,13 +154,25 @@ export async function writeSegment({
   const headerPayload = encodeCanonical(header);
   const headerFrame = encodeFrame(profile.headerFrame, headerPayload);
 
-  const recordBlocks = partitionRecords(prepared, blockTargetBytes);
+  const recordBlocks = partitionRecords(prepared, blockTargetBytes, blockMaxRecords, blockRecordCounts);
   let firstRecordIndex = 0;
   const encodedBlocks = recordBlocks.map((records, blockIndex) => {
     const uncompressed = Buffer.concat(records.map((record) => record.framed));
-    testFaultInjector?.("segment.before-compression", { blockIndex, uncompressedLength: uncompressed.length });
-    const compressed = compressBlock(uncompressed);
-    testFaultInjector?.("segment.after-compression", { blockIndex, compressedLength: compressed.length });
+    const preparedBlock = precompressedBlocks?.[blockIndex];
+    let compressed;
+    if (preparedBlock === undefined) {
+      testFaultInjector?.("segment.before-compression", { blockIndex, uncompressedLength: uncompressed.length });
+      compressed = compressBlock(uncompressed);
+      testFaultInjector?.("segment.after-compression", { blockIndex, compressedLength: compressed.length });
+    } else {
+      invariant(preparedBlock.data instanceof Uint8Array, "BLOCK_PRECOMPRESSED", `Precompressed block ${blockIndex} data must be bytes`);
+      invariant(preparedBlock.uncompressedLength === uncompressed.length, "BLOCK_PRECOMPRESSED", `Precompressed block ${blockIndex} has the wrong uncompressed length`);
+      const expectedHash = domainHash("record-block-v1", uncompressed);
+      invariant(preparedBlock.recordsHash instanceof Uint8Array && Buffer.from(preparedBlock.recordsHash).equals(Buffer.from(expectedHash)), "BLOCK_PRECOMPRESSED", `Precompressed block ${blockIndex} has the wrong records hash`);
+      const recovered = decompressBlock(preparedBlock.data, uncompressed.length, uncompressed.length);
+      invariant(Buffer.from(recovered).equals(uncompressed), "BLOCK_PRECOMPRESSED", `Precompressed block ${blockIndex} does not contain the expected records`);
+      compressed = Buffer.from(preparedBlock.data);
+    }
     const block = {
       blockIndex,
       firstRecordIndex,

@@ -2,7 +2,10 @@ import { mkdir, open, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
+  canonicalEventBytes,
+  compressBlock,
   createRoutingPolicy,
+  decompressBlock,
   domainHash,
   eventHashHex,
   fromHex,
@@ -17,6 +20,54 @@ import {
 } from "@glare9/provenance";
 
 import { DurableIntake } from "./durable-intake.js";
+import { ActiveSegmentStore } from "./active-segment-store.js";
+
+const DEFAULT_LIFECYCLE = Object.freeze({
+  blockMaxBytes: 1024 * 1024,
+  blockMaxRecords: 1_000,
+  segmentMaxBytes: 32 * 1024 * 1024,
+  segmentMaxRecords: 10_000,
+  segmentMaxAgeMs: 60_000,
+  maxAcceptedEvents: 100_000,
+  maxAcceptedBytes: 1024 * 1024 * 1024,
+  maxActiveBlockBytes: 16 * 1024 * 1024,
+});
+
+function positiveInteger(value, name) {
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new G9pError("LEDGER_LIFECYCLE_CONFIG", `${name} must be a positive safe integer`);
+  }
+  return value;
+}
+
+function lifecycleConfig(options = {}) {
+  const config = {};
+  for (const [name, fallback] of Object.entries(DEFAULT_LIFECYCLE)) {
+    config[name] = positiveInteger(options[name] ?? fallback, name);
+  }
+  if (config.blockMaxBytes < 1024) {
+    throw new G9pError("LEDGER_LIFECYCLE_CONFIG", "blockMaxBytes must be at least 1,024 bytes");
+  }
+  if (config.blockMaxBytes > 64 * 1024 * 1024 || config.segmentMaxBytes > 64 * 1024 * 1024
+    || config.segmentMaxRecords > 100_000) {
+    throw new G9pError("LEDGER_LIFECYCLE_CONFIG", "Block and segment limits exceed the supported provisional-state bounds");
+  }
+  if (config.segmentMaxBytes < config.blockMaxBytes || config.segmentMaxRecords < config.blockMaxRecords) {
+    throw new G9pError("LEDGER_LIFECYCLE_CONFIG", "Segment limits must be at least their corresponding block limits");
+  }
+  if (config.maxActiveBlockBytes < config.blockMaxBytes) {
+    throw new G9pError("LEDGER_LIFECYCLE_CONFIG", "maxActiveBlockBytes must be at least blockMaxBytes");
+  }
+  return Object.freeze(config);
+}
+
+function framedEventBytes(event) {
+  const bytes = canonicalEventBytes(event);
+  const framed = Buffer.allocUnsafe(4 + bytes.byteLength);
+  framed.writeUInt32BE(bytes.byteLength, 0);
+  Buffer.from(bytes).copy(framed, 4);
+  return framed;
+}
 
 function ledgerDirectoryName(ledgerId) {
   return toHex(domainHash("ledger-directory-v1", Buffer.from(ledgerId, "utf8")));
@@ -117,7 +168,15 @@ async function routingEpochFiles(path) {
 }
 
 export class LocalLedger {
-  constructor({ dataDirectory, signer, topologyAuthority, shardCount = 1, adoptLegacyRoutingHistory = false, testFaultInjector }) {
+  constructor({
+    dataDirectory,
+    signer,
+    topologyAuthority,
+    shardCount = 1,
+    adoptLegacyRoutingHistory = false,
+    lifecycle,
+    testFaultInjector,
+  }) {
     if (topologyAuthority?.algorithm !== "ed25519" || !topologyAuthority.privateKey || !(topologyAuthority.publicKeyDer instanceof Uint8Array)) {
       throw new G9pError("LEDGER_TOPOLOGY_AUTHORITY", "A local Ed25519 topology authority is required");
     }
@@ -125,20 +184,30 @@ export class LocalLedger {
     this.segmentDirectory = join(dataDirectory, "segments");
     this.routingDirectory = join(dataDirectory, "routing");
     this.intakeDirectory = join(dataDirectory, "intake");
+    this.activeStateDirectory = join(dataDirectory, "provisional");
     this.signer = signer;
     this.topologyAuthority = topologyAuthority;
     this.adoptLegacyRoutingHistory = adoptLegacyRoutingHistory;
     this.testFaultInjector = testFaultInjector;
     this.defaultRoutingPolicy = createRoutingPolicy(shardCount);
+    this.lifecycle = lifecycleConfig(lifecycle);
     this.routingEpochs = new Map();
     this.routingEpochDirectories = new Map();
     this.routingHistory = new Map();
     this.ledgerSegmentFormats = new Map();
     this.eventIndex = new Map();
     this.pendingIndex = new Map();
+    this.provisionalIndex = new Map();
     this.shardStates = new Map();
+    this.activeSegments = new Map();
+    this.assignedPendingIds = new Set();
+    this.pendingBytes = 0;
+    this.activeBlockBytes = 0;
     this.intake = new DurableIntake(this.intakeDirectory, { testFaultInjector });
+    this.activeStore = new ActiveSegmentStore(this.activeStateDirectory, { testFaultInjector });
     this.operationTail = Promise.resolve();
+    this.ageTimer = undefined;
+    this.backgroundError = null;
   }
 
   async initialize() {
@@ -188,7 +257,9 @@ export class LocalLedger {
     }
     this.#verifyTransitionHeads();
     await this.#loadDurableIntake();
+    await this.#loadActiveSegments();
     await this.#drainAccepted();
+    this.#startAgeTimer();
     return this;
   }
 
@@ -209,7 +280,121 @@ export class LocalLedger {
         }
         throw new G9pError("INTAKE_DUPLICATE", `Durable intake contains duplicate records for event ID ${record.event.eventId}`);
       }
+      record.eventBytes = canonicalEventBytes(record.event).byteLength;
       this.pendingIndex.set(record.event.eventId, record);
+      this.pendingBytes += record.eventBytes;
+    }
+  }
+
+  async #loadActiveSegments() {
+    for (const stored of await this.activeStore.initialize()) {
+      const key = stateKey(stored.ledgerId, stored.epochNumber, stored.shardId);
+      if (this.activeSegments.has(key)) {
+        throw new G9pError("ACTIVE_STATE_DUPLICATE", `More than one active segment exists for ${stored.ledgerId} epoch ${stored.epochNumber} ${stored.shardId}`);
+      }
+      const routingEpoch = this.routingEpochs.get(stored.ledgerId);
+      const state = this.shardStates.get(key);
+      const references = stored.blocks.flatMap((block) => block.records);
+      const allReferencesSealed = references.every((reference) => {
+        const sealed = this.eventIndex.get(reference.eventId);
+        return sealed !== undefined && sealed.recordHash === reference.recordHash;
+      });
+      if (allReferencesSealed) {
+        await this.activeStore.remove(stored);
+        continue;
+      }
+      const expectedFormat = this.ledgerSegmentFormats.get(ledgerEpochKey(stored.ledgerId, stored.epochNumber)) ?? 2;
+      const expectedSegmentNumber = state?.nextSegmentNumber ?? 0;
+      const expectedPrevious = state?.previousSegmentHash ?? null;
+      const previousMatches = stored.previousSegmentHash === null
+        ? expectedPrevious === null
+        : expectedPrevious !== null && Buffer.from(stored.previousSegmentHash).equals(Buffer.from(expectedPrevious));
+      if (routingEpoch?.epochNumber !== stored.epochNumber
+        || stored.ledgerDirectory !== ledgerDirectoryName(stored.ledgerId)
+        || stored.segmentNumber !== expectedSegmentNumber
+        || stored.formatVersion !== expectedFormat
+        || !previousMatches) {
+        throw new G9pError("ACTIVE_STATE_POSITION", `Active segment state for ${stored.ledgerId} does not match verified ledger history`);
+      }
+
+      const seen = new Set();
+      const blocks = [];
+      let recordCount = 0;
+      let byteCount = 0;
+      let allSealed = true;
+      for (const block of stored.blocks) {
+        const records = [];
+        for (const reference of block.records) {
+          if (seen.has(reference.eventId) || this.assignedPendingIds.has(reference.eventId)) {
+            throw new G9pError("ACTIVE_STATE_DUPLICATE", `Event ${reference.eventId} appears more than once in provisional state`);
+          }
+          seen.add(reference.eventId);
+          const pending = this.pendingIndex.get(reference.eventId);
+          if (pending === undefined) {
+            const sealed = this.eventIndex.get(reference.eventId);
+            if (sealed === undefined || sealed.recordHash !== reference.recordHash) {
+              throw new G9pError("ACTIVE_STATE_RECORD", `Provisional event ${reference.eventId} has no matching durable intake or sealed record`);
+            }
+            continue;
+          }
+          allSealed = false;
+          if (pending.recordHash !== reference.recordHash) {
+            throw new G9pError("ACTIVE_STATE_RECORD", `Provisional event ${reference.eventId} conflicts with durable intake`);
+          }
+          const route = routeEvent(pending.event, routingEpoch.routingPolicy);
+          if (route.shardId !== stored.shardId) {
+            throw new G9pError("ACTIVE_STATE_SHARD", `Provisional event ${reference.eventId} no longer routes to its recorded shard`);
+          }
+          records.push(pending);
+          this.assignedPendingIds.add(reference.eventId);
+          byteCount += pending.eventBytes + 4;
+          recordCount += 1;
+        }
+        if (records.length > 0) {
+          const uncompressed = Buffer.concat(records.map((pending) => framedEventBytes(pending.event)));
+          if (block.uncompressedLength !== uncompressed.byteLength
+            || block.uncompressedLength > this.lifecycle.maxActiveBlockBytes
+            || !Buffer.from(block.recordsHash).equals(Buffer.from(domainHash("record-block-v1", uncompressed)))) {
+            throw new G9pError("ACTIVE_STATE_BLOCK", `Provisional block ${block.blockIndex} commitments do not match durable intake`);
+          }
+          const recovered = decompressBlock(block.data, block.uncompressedLength, block.uncompressedLength);
+          if (!Buffer.from(recovered).equals(uncompressed)) {
+            throw new G9pError("ACTIVE_STATE_BLOCK", `Provisional block ${block.blockIndex} compressed bytes do not match durable intake`);
+          }
+          blocks.push({
+            records,
+            uncompressedLength: block.uncompressedLength,
+            recordsHash: Uint8Array.from(block.recordsHash),
+            data: Uint8Array.from(block.data),
+          });
+        }
+      }
+      if (allSealed) {
+        await this.activeStore.remove(stored);
+        continue;
+      }
+      if (recordCount === 0 || blocks.length !== stored.blocks.length) {
+        throw new G9pError("ACTIVE_STATE_RECORD", "Active segment state mixes sealed and unsealed records");
+      }
+      const active = {
+        key,
+        ledgerId: stored.ledgerId,
+        shardId: stored.shardId,
+        epochNumber: stored.epochNumber,
+        formatVersion: stored.formatVersion,
+        directory: state?.directory ?? this.#segmentDirectory(stored.ledgerId, stored.epochNumber, stored.shardId, stored.formatVersion),
+        segmentNumber: stored.segmentNumber,
+        previousSegmentHash: expectedPrevious,
+        openedAt: stored.openedAt,
+        blocks,
+        activeBlock: [],
+        activeBlockBytes: 0,
+        recordCount,
+        byteCount,
+        statePath: stored.path,
+      };
+      this.activeSegments.set(key, active);
+      this.#rebuildProvisionalReceipts(active);
     }
   }
 
@@ -408,7 +593,7 @@ export class LocalLedger {
   }
 
   drainAccepted() {
-    return this.#serialize(() => this.#drainAccepted());
+    return this.#serialize(() => this.#drainAccepted({ forceSeal: true }));
   }
 
   transitionRouting(options) {
@@ -418,9 +603,50 @@ export class LocalLedger {
   ingestBatch(events) {
     return this.#serialize(async () => {
       const accepted = await this.#acceptBatch(events);
-      await this.#drainAccepted();
+      await this.#drainAccepted({ forceSeal: true });
       return accepted.map((receipt) => this.eventIndex.get(receipt.eventId) ?? receipt);
     });
+  }
+
+  ingestAcceptedBatch(events) {
+    return this.#serialize(async () => {
+      const accepted = await this.#acceptBatch(events);
+      await this.#drainAccepted({ forceSeal: false });
+      return accepted.map((receipt) => this.eventIndex.get(receipt.eventId)
+        ?? this.provisionalIndex.get(receipt.eventId)
+        ?? receipt);
+    });
+  }
+
+  receipt(eventId, recordHash) {
+    return this.#serialize(() => {
+      if (typeof eventId !== "string" || eventId.length === 0) {
+        throw new G9pError("RECEIPT_EVENT_ID", "Receipt lookup requires a non-empty event ID");
+      }
+      if (typeof recordHash !== "string" || !/^[0-9a-f]{64}$/u.test(recordHash)) {
+        throw new G9pError("RECEIPT_RECORD_HASH", "Receipt lookup requires the expected 64-character lowercase record hash");
+      }
+      const receipt = this.eventIndex.get(eventId)
+        ?? this.provisionalIndex.get(eventId)
+        ?? (this.pendingIndex.has(eventId) ? this.#acceptedReceipt(this.pendingIndex.get(eventId)) : undefined);
+      if (receipt === undefined) {
+        throw new G9pError("RECEIPT_NOT_FOUND", `No receipt exists for event ${eventId}`);
+      }
+      if (receipt.recordHash !== recordHash) {
+        throw new G9pError("EVENT_ID_CONFLICT", `Event ID ${eventId} identifies different ledger content`);
+      }
+      return receipt;
+    });
+  }
+
+  sealExpired(now = Date.now()) {
+    return this.#serialize(() => this.#sealExpired(now));
+  }
+
+  close({ seal = true } = {}) {
+    if (this.ageTimer !== undefined) clearInterval(this.ageTimer);
+    this.ageTimer = undefined;
+    return seal ? this.#serialize(() => this.#drainAccepted({ forceSeal: true })) : this.operationTail;
   }
 
   async #acceptBatch(events) {
@@ -429,7 +655,7 @@ export class LocalLedger {
       return event;
     });
     const prepared = validatedEvents.map((event) => {
-      return { event, recordHash: eventHashHex(event) };
+      return { event, recordHash: eventHashHex(event), eventBytes: canonicalEventBytes(event).byteLength };
     });
 
     const requestIds = new Map();
@@ -450,6 +676,18 @@ export class LocalLedger {
       }
     }
 
+    const newItems = prepared.filter((item, index) => prepared.findIndex((candidate) => candidate.event.eventId === item.event.eventId) === index
+      && !this.eventIndex.has(item.event.eventId)
+      && !this.pendingIndex.has(item.event.eventId));
+    if (newItems.some((item) => item.eventBytes + 4 > this.lifecycle.maxActiveBlockBytes)) {
+      throw new G9pError("LEDGER_BACKPRESSURE", "An event exceeds the configured active-block memory capacity");
+    }
+    const nextAcceptedEvents = this.pendingIndex.size + newItems.length;
+    const nextAcceptedBytes = this.pendingBytes + newItems.reduce((total, item) => total + item.eventBytes, 0);
+    if (nextAcceptedEvents > this.lifecycle.maxAcceptedEvents || nextAcceptedBytes > this.lifecycle.maxAcceptedBytes) {
+      throw new G9pError("LEDGER_BACKPRESSURE", "Ledger durable-intake capacity has been reached; retry after retained events are sealed");
+    }
+
     const receipts = [];
     const acceptedThisRequest = new Map();
     for (const item of prepared) {
@@ -461,22 +699,256 @@ export class LocalLedger {
       let pending = this.pendingIndex.get(item.event.eventId) ?? acceptedThisRequest.get(item.event.eventId);
       if (pending === undefined) {
         pending = await this.intake.append(item.event);
+        pending.eventBytes = item.eventBytes;
         this.pendingIndex.set(item.event.eventId, pending);
+        this.pendingBytes += item.eventBytes;
         acceptedThisRequest.set(item.event.eventId, pending);
       }
-      receipts.push({
-        eventId: item.event.eventId,
-        status: "accepted",
-        ledgerId: item.event.ledgerId,
-        recordHash: item.recordHash,
-        intakeSequence: pending.sequence,
-        acceptedAt: pending.acceptedAt,
-      });
+      receipts.push(this.#acceptedReceipt(pending));
     }
     return receipts;
   }
 
-  async #drainAccepted() {
+  #acceptedReceipt(pending) {
+    return {
+      eventId: pending.event.eventId,
+      status: "accepted",
+      ledgerId: pending.event.ledgerId,
+      recordHash: pending.recordHash,
+      intakeSequence: pending.sequence,
+      acceptedAt: pending.acceptedAt,
+    };
+  }
+
+  #segmentDirectory(ledgerId, epochNumber, shardId, formatVersion) {
+    return formatVersion === 1
+      ? join(this.segmentDirectory, ledgerDirectoryName(ledgerId), shardId)
+      : join(this.segmentDirectory, ledgerDirectoryName(ledgerId), epochDirectoryName(epochNumber), shardId);
+  }
+
+  #activeState(active) {
+    return {
+      kind: "g9p-active-segment",
+      version: 1,
+      ledgerDirectory: ledgerDirectoryName(active.ledgerId),
+      ledgerId: active.ledgerId,
+      epochNumber: active.epochNumber,
+      shardId: active.shardId,
+      segmentNumber: active.segmentNumber,
+      formatVersion: active.formatVersion,
+      openedAt: active.openedAt,
+      previousSegmentHash: active.previousSegmentHash === null ? null : Uint8Array.from(active.previousSegmentHash),
+      blocks: active.blocks.map((block, blockIndex) => ({
+        blockIndex,
+        records: block.records.map((pending) => ({ eventId: pending.event.eventId, recordHash: pending.recordHash })),
+        uncompressedLength: block.uncompressedLength,
+        recordsHash: Uint8Array.from(block.recordsHash),
+        data: Uint8Array.from(block.data),
+      })),
+    };
+  }
+
+  #rebuildProvisionalReceipts(active) {
+    let recordIndex = 0;
+    active.blocks.forEach((block, blockIndex) => {
+      for (const pending of block.records) {
+        this.provisionalIndex.set(pending.event.eventId, {
+          eventId: pending.event.eventId,
+          status: "provisional",
+          ledgerId: active.ledgerId,
+          shardId: active.shardId,
+          routingEpochNumber: active.epochNumber,
+          segmentNumber: active.segmentNumber,
+          blockIndex,
+          recordIndex,
+          recordHash: pending.recordHash,
+          intakeSequence: pending.sequence,
+          acceptedAt: pending.acceptedAt,
+          openedAt: active.openedAt,
+        });
+        recordIndex += 1;
+      }
+    });
+  }
+
+  #activeSegmentFor(item, routingEpoch) {
+    const key = stateKey(item.event.ledgerId, routingEpoch.epochNumber, item.route.shardId);
+    let active = this.activeSegments.get(key);
+    if (active !== undefined) return active;
+    const shardState = this.shardStates.get(key);
+    const formatVersion = this.ledgerSegmentFormats.get(ledgerEpochKey(item.event.ledgerId, routingEpoch.epochNumber)) ?? 2;
+    active = {
+      key,
+      ledgerId: item.event.ledgerId,
+      shardId: item.route.shardId,
+      epochNumber: routingEpoch.epochNumber,
+      formatVersion,
+      directory: shardState?.directory ?? this.#segmentDirectory(item.event.ledgerId, routingEpoch.epochNumber, item.route.shardId, formatVersion),
+      segmentNumber: shardState?.nextSegmentNumber ?? 0,
+      previousSegmentHash: shardState?.previousSegmentHash ?? null,
+      openedAt: new Date().toISOString(),
+      blocks: [],
+      activeBlock: [],
+      activeBlockBytes: 0,
+      recordCount: 0,
+      byteCount: 0,
+      statePath: undefined,
+    };
+    this.activeSegments.set(key, active);
+    return active;
+  }
+
+  async #completeActiveBlock(active) {
+    if (active.activeBlock.length === 0) return;
+    const completed = active.activeBlock;
+    const uncompressed = Buffer.concat(completed.map((pending) => framedEventBytes(pending.event)));
+    const blockIndex = active.blocks.length;
+    this.testFaultInjector?.("segment.before-compression", { blockIndex, uncompressedLength: uncompressed.byteLength });
+    const compressed = compressBlock(uncompressed);
+    this.testFaultInjector?.("segment.after-compression", { blockIndex, compressedLength: compressed.byteLength });
+    active.blocks.push({
+      records: completed,
+      uncompressedLength: uncompressed.byteLength,
+      recordsHash: Uint8Array.from(domainHash("record-block-v1", uncompressed)),
+      data: Uint8Array.from(compressed),
+    });
+    active.activeBlock = [];
+    this.activeBlockBytes -= active.activeBlockBytes;
+    active.activeBlockBytes = 0;
+    const state = this.#activeState(active);
+    active.statePath = await this.activeStore.persist(state);
+    this.#rebuildProvisionalReceipts(active);
+  }
+
+  async #makeActiveMemoryRoom(requiredBytes, exceptKey) {
+    while (this.activeBlockBytes + requiredBytes > this.lifecycle.maxActiveBlockBytes) {
+      const candidate = [...this.activeSegments.values()]
+        .filter((active) => active.key !== exceptKey && active.activeBlock.length > 0)
+        .sort((left, right) => right.activeBlockBytes - left.activeBlockBytes)[0];
+      if (candidate === undefined) break;
+      await this.#completeActiveBlock(candidate);
+    }
+    if (this.activeBlockBytes + requiredBytes > this.lifecycle.maxActiveBlockBytes) {
+      throw new G9pError("LEDGER_BACKPRESSURE", "Ledger active-block memory capacity has been reached");
+    }
+  }
+
+  async #appendToActive(item, routingEpoch) {
+    let active = this.#activeSegmentFor(item, routingEpoch);
+    const recordBytes = item.pending.eventBytes + 4;
+    const segmentWouldOverflow = active.recordCount > 0
+      && (active.recordCount + 1 > this.lifecycle.segmentMaxRecords
+        || active.byteCount + recordBytes > this.lifecycle.segmentMaxBytes);
+    if (segmentWouldOverflow) {
+      await this.#sealActiveSegment(active);
+      active = this.#activeSegmentFor(item, routingEpoch);
+    }
+    const blockWouldOverflow = active.activeBlock.length > 0
+      && (active.activeBlock.length + 1 > this.lifecycle.blockMaxRecords
+        || active.activeBlockBytes + recordBytes > this.lifecycle.blockMaxBytes);
+    if (blockWouldOverflow) await this.#completeActiveBlock(active);
+    await this.#makeActiveMemoryRoom(recordBytes, active.key);
+    active.activeBlock.push(item.pending);
+    active.activeBlockBytes += recordBytes;
+    active.recordCount += 1;
+    active.byteCount += recordBytes;
+    this.activeBlockBytes += recordBytes;
+    this.assignedPendingIds.add(item.event.eventId);
+
+    if (active.activeBlock.length >= this.lifecycle.blockMaxRecords
+      || active.activeBlockBytes >= this.lifecycle.blockMaxBytes) {
+      await this.#completeActiveBlock(active);
+    }
+    if (active.recordCount >= this.lifecycle.segmentMaxRecords
+      || active.byteCount >= this.lifecycle.segmentMaxBytes) {
+      await this.#sealActiveSegment(active);
+    }
+  }
+
+  async #sealActiveSegment(active) {
+    await this.#completeActiveBlock(active);
+    if (active.blocks.length === 0) return;
+    const routingEpoch = this.routingEpochs.get(active.ledgerId);
+    const records = active.blocks.flatMap((block) => block.records);
+    const outputPath = join(active.directory, segmentFileName(active.segmentNumber));
+    const result = await writeSegment({
+      outputPath,
+      events: records.map((pending) => pending.event),
+      routingPolicy: routingEpoch.routingPolicy,
+      segmentNumber: active.segmentNumber,
+      previousSegmentHash: active.previousSegmentHash,
+      routingEpoch: active.formatVersion === 1 ? null : {
+        epochNumber: routingEpoch.epochNumber,
+        epochHash: fromHex(routingEpoch.epochHash, 32),
+      },
+      signer: this.signer,
+      createdAt: active.openedAt,
+      blockTargetBytes: this.lifecycle.blockMaxBytes,
+      blockMaxRecords: this.lifecycle.blockMaxRecords,
+      blockRecordCounts: active.blocks.map((block) => block.records.length),
+      precompressedBlocks: active.blocks.map((block) => ({
+        uncompressedLength: block.uncompressedLength,
+        recordsHash: block.recordsHash,
+        data: block.data,
+      })),
+      testFaultInjector: this.testFaultInjector,
+    });
+    this.#recordLedgerSegmentFormat(active.ledgerId, active.epochNumber, active.formatVersion);
+
+    records.forEach((pending, recordIndex) => {
+      this.eventIndex.set(pending.event.eventId, {
+        eventId: pending.event.eventId,
+        status: "sealed",
+        ledgerId: active.ledgerId,
+        shardId: active.shardId,
+        routingEpochNumber: active.epochNumber,
+        segmentNumber: active.segmentNumber,
+        recordIndex,
+        recordHash: pending.recordHash,
+        segmentHash: result.segmentHash,
+        signerKeyId: result.signerKeyId,
+      });
+    });
+    this.shardStates.set(active.key, {
+      ledgerId: active.ledgerId,
+      shardId: active.shardId,
+      epochNumber: active.epochNumber,
+      formatVersion: active.formatVersion,
+      directory: active.directory,
+      nextSegmentNumber: active.segmentNumber + 1,
+      previousSegmentHash: fromHex(result.segmentHash, 32),
+    });
+    await this.activeStore.remove({ ...this.#activeState(active), path: active.statePath });
+    this.activeSegments.delete(active.key);
+    for (const pending of records) {
+      this.provisionalIndex.delete(pending.event.eventId);
+      this.assignedPendingIds.delete(pending.event.eventId);
+      await this.intake.remove(pending);
+      this.pendingIndex.delete(pending.event.eventId);
+      this.pendingBytes -= pending.eventBytes;
+    }
+  }
+
+  async #sealExpired(now) {
+    if (!Number.isFinite(now)) throw new G9pError("LEDGER_TIME", "Expiry time must be a finite millisecond value");
+    for (const active of [...this.activeSegments.values()]) {
+      if (now - new Date(active.openedAt).valueOf() >= this.lifecycle.segmentMaxAgeMs) {
+        await this.#sealActiveSegment(active);
+      }
+    }
+  }
+
+  #startAgeTimer() {
+    const interval = Math.max(100, Math.min(1_000, Math.floor(this.lifecycle.segmentMaxAgeMs / 4)));
+    this.ageTimer = setInterval(() => {
+      this.sealExpired().catch((error) => {
+        this.backgroundError = error;
+      });
+    }, interval);
+    this.ageTimer.unref?.();
+  }
+
+  async #drainAccepted({ forceSeal = true } = {}) {
     for (const pending of [...this.pendingIndex.values()].sort((left, right) => left.sequence - right.sequence)) {
       const sealed = this.eventIndex.get(pending.event.eventId);
       if (sealed === undefined) continue;
@@ -485,13 +957,14 @@ export class LocalLedger {
       }
       await this.intake.remove(pending);
       this.pendingIndex.delete(pending.event.eventId);
+      this.pendingBytes -= pending.eventBytes;
     }
 
     const pendingRecords = [...this.pendingIndex.values()].sort((left, right) => left.sequence - right.sequence);
     for (const ledgerId of new Set(pendingRecords.map((record) => record.event.ledgerId))) {
       await this.#ensureGenesisRoutingEpoch(ledgerId);
     }
-    const uniqueNew = pendingRecords.map((pending) => {
+    const uniqueNew = pendingRecords.filter((pending) => !this.assignedPendingIds.has(pending.event.eventId)).map((pending) => {
       const routingEpoch = this.routingEpochs.get(pending.event.ledgerId);
       return {
         event: pending.event,
@@ -501,76 +974,11 @@ export class LocalLedger {
       };
     });
 
-    const groups = new Map();
     for (const item of uniqueNew) {
-      const routingEpoch = this.routingEpochs.get(item.event.ledgerId);
-      const key = stateKey(item.event.ledgerId, routingEpoch.epochNumber, item.route.shardId);
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(item);
+      await this.#appendToActive(item, this.routingEpochs.get(item.event.ledgerId));
     }
-
-    for (const [key, items] of groups) {
-      const { ledgerId } = items[0].event;
-      const { shardId } = items[0].route;
-      const routingEpoch = this.routingEpochs.get(ledgerId);
-      const formatVersion = this.ledgerSegmentFormats.get(ledgerEpochKey(ledgerId, routingEpoch.epochNumber)) ?? 2;
-      const directory = formatVersion === 1
-        ? join(this.segmentDirectory, ledgerDirectoryName(ledgerId), shardId)
-        : join(this.segmentDirectory, ledgerDirectoryName(ledgerId), epochDirectoryName(routingEpoch.epochNumber), shardId);
-      const state = this.shardStates.get(key) ?? {
-        ledgerId,
-        shardId,
-        epochNumber: routingEpoch.epochNumber,
-        formatVersion,
-        directory,
-        nextSegmentNumber: 0,
-        previousSegmentHash: null,
-      };
-      const outputPath = join(state.directory, segmentFileName(state.nextSegmentNumber));
-      const result = await writeSegment({
-        outputPath,
-        events: items.map((item) => item.event),
-        routingPolicy: this.routingEpochs.get(ledgerId).routingPolicy,
-        segmentNumber: state.nextSegmentNumber,
-        previousSegmentHash: state.previousSegmentHash,
-        routingEpoch: state.formatVersion === 1 ? null : {
-          epochNumber: routingEpoch.epochNumber,
-          epochHash: fromHex(routingEpoch.epochHash, 32),
-        },
-        signer: this.signer,
-        testFaultInjector: this.testFaultInjector,
-      });
-      this.#recordLedgerSegmentFormat(ledgerId, state.epochNumber, state.formatVersion);
-
-      items.forEach((item, recordIndex) => {
-        this.eventIndex.set(item.event.eventId, {
-          eventId: item.event.eventId,
-          status: "sealed",
-          ledgerId,
-          shardId,
-          routingEpochNumber: state.epochNumber,
-          segmentNumber: state.nextSegmentNumber,
-          recordIndex,
-          recordHash: item.recordHash,
-          segmentHash: result.segmentHash,
-          signerKeyId: result.signerKeyId,
-        });
-      });
-
-      this.shardStates.set(key, {
-        ledgerId,
-        shardId,
-        epochNumber: state.epochNumber,
-        formatVersion: state.formatVersion,
-        directory: state.directory,
-        nextSegmentNumber: state.nextSegmentNumber + 1,
-        previousSegmentHash: fromHex(result.segmentHash, 32),
-      });
-
-      for (const item of items) {
-        await this.intake.remove(item.pending);
-        this.pendingIndex.delete(item.event.eventId);
-      }
+    if (forceSeal) {
+      for (const active of [...this.activeSegments.values()]) await this.#sealActiveSegment(active);
     }
   }
 
@@ -643,6 +1051,7 @@ export class LocalLedger {
   info() {
     return {
       formatVersion: 1,
+      ingestionContractVersions: [1, 2],
       routingEpochProtocolVersion: 1,
       routingPolicy: this.defaultRoutingPolicy,
       topologyAuthorityKeyId: this.topologyAuthority.keyId,
@@ -650,7 +1059,13 @@ export class LocalLedger {
       signerKeyId: this.signer.keyId,
       knownEvents: this.eventIndex.size,
       acceptedEvents: this.pendingIndex.size,
+      acceptedBytes: this.pendingBytes,
+      provisionalEvents: this.provisionalIndex.size,
+      activeSegments: this.activeSegments.size,
+      activeBlockBytes: this.activeBlockBytes,
       activeShardStreams: this.shardStates.size,
+      lifecycle: this.lifecycle,
+      backgroundError: this.backgroundError === null ? null : this.backgroundError.code ?? "UNEXPECTED",
     };
   }
 }

@@ -11,16 +11,74 @@ function requireString(value, name) {
   return value;
 }
 
-function validateReceipt(receipt) {
+function receiptObject(receipt) {
   if (receipt === null || typeof receipt !== "object" || Array.isArray(receipt)) {
     throw new ProvenanceServiceError("Ledger service returned an invalid receipt", {
       code: "INVALID_LEDGER_RESPONSE",
       retryable: false,
     });
   }
+  return receipt;
+}
+
+function requireHex(value, name) {
+  if (typeof value !== "string" || !/^[0-9a-f]{64}$/u.test(value)) {
+    throw new ProvenanceServiceError(`Ledger service returned invalid ${name}`, {
+      code: "INVALID_LEDGER_RESPONSE",
+      retryable: false,
+    });
+  }
+  return value;
+}
+
+function requireReceiptString(value, name) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new ProvenanceServiceError(`Ledger service returned invalid ${name}`, {
+      code: "INVALID_LEDGER_RESPONSE",
+      retryable: false,
+    });
+  }
+  return value;
+}
+
+function requireInteger(value, name) {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new ProvenanceServiceError(`Ledger service returned invalid ${name}`, {
+      code: "INVALID_LEDGER_RESPONSE",
+      retryable: false,
+    });
+  }
+  return value;
+}
+
+function requireTimestamp(value, name) {
+  requireReceiptString(value, name);
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf()) || parsed.toISOString() !== value) {
+    throw new ProvenanceServiceError(`Ledger service returned invalid ${name}`, {
+      code: "INVALID_LEDGER_RESPONSE",
+      retryable: false,
+    });
+  }
+  return value;
+}
+
+function exactReceiptFields(receipt, fields) {
+  const actual = Object.keys(receipt).sort();
+  const expected = [...fields].sort();
+  if (actual.length !== expected.length || !actual.every((field, index) => field === expected[index])) {
+    throw new ProvenanceServiceError("Ledger service returned receipt fields that do not match contract version 2", {
+      code: "INVALID_LEDGER_RESPONSE",
+      retryable: false,
+    });
+  }
+}
+
+function validateReceipt(receipt) {
+  receiptObject(receipt);
 
   for (const field of ["eventId", "status", "ledgerId", "shardId", "recordHash", "segmentHash", "signerKeyId"]) {
-    requireString(receipt[field], `receipt.${field}`);
+    requireReceiptString(receipt[field], `receipt.${field}`);
   }
   if (receipt.status !== "sealed") {
     throw new ProvenanceServiceError(`Ledger service returned unsupported receipt status ${receipt.status}`, {
@@ -37,6 +95,49 @@ function validateReceipt(receipt) {
     }
   }
   return receipt;
+}
+
+function validateLifecycleReceipt(receipt) {
+  receiptObject(receipt);
+  for (const field of ["eventId", "status", "ledgerId"]) requireReceiptString(receipt[field], `receipt.${field}`);
+  requireHex(receipt.recordHash, "receipt.recordHash");
+
+  if (receipt.status === "accepted") {
+    exactReceiptFields(receipt, ["eventId", "status", "ledgerId", "recordHash", "intakeSequence", "acceptedAt"]);
+    requireInteger(receipt.intakeSequence, "receipt.intakeSequence");
+    requireTimestamp(receipt.acceptedAt, "receipt.acceptedAt");
+    return receipt;
+  }
+  if (receipt.status === "provisional") {
+    exactReceiptFields(receipt, [
+      "eventId", "status", "ledgerId", "recordHash", "intakeSequence", "acceptedAt",
+      "shardId", "routingEpochNumber", "segmentNumber", "blockIndex", "recordIndex", "openedAt",
+    ]);
+    requireReceiptString(receipt.shardId, "receipt.shardId");
+    for (const field of ["intakeSequence", "routingEpochNumber", "segmentNumber", "blockIndex", "recordIndex"]) {
+      requireInteger(receipt[field], `receipt.${field}`);
+    }
+    requireTimestamp(receipt.acceptedAt, "receipt.acceptedAt");
+    requireTimestamp(receipt.openedAt, "receipt.openedAt");
+    return receipt;
+  }
+  if (receipt.status === "sealed") {
+    exactReceiptFields(receipt, [
+      "eventId", "status", "ledgerId", "recordHash", "shardId", "routingEpochNumber",
+      "segmentNumber", "recordIndex", "segmentHash", "signerKeyId",
+    ]);
+    requireReceiptString(receipt.shardId, "receipt.shardId");
+    for (const field of ["routingEpochNumber", "segmentNumber", "recordIndex"]) {
+      requireInteger(receipt[field], `receipt.${field}`);
+    }
+    requireHex(receipt.segmentHash, "receipt.segmentHash");
+    requireHex(receipt.signerKeyId, "receipt.signerKeyId");
+    return receipt;
+  }
+  throw new ProvenanceServiceError(`Ledger service returned unsupported receipt status ${receipt.status}`, {
+    code: "INVALID_LEDGER_RESPONSE",
+    retryable: false,
+  });
 }
 
 async function parseResponse(response) {
@@ -152,5 +253,54 @@ export class ProvenanceClient {
       }
     });
     return receipts;
+  }
+
+  async submitAcceptedBatch(events) {
+    if (!Array.isArray(events) || events.length === 0) {
+      throw new TypeError("submitAcceptedBatch requires at least one event");
+    }
+    const payload = await this.request("/v2/events:batch", {
+      method: "POST",
+      body: { contractVersion: 2, events },
+    });
+    if (payload.contractVersion !== 2 || !Array.isArray(payload.receipts) || payload.receipts.length !== events.length) {
+      throw new ProvenanceServiceError("Ledger service returned an invalid accepted-first batch response", {
+        code: "INVALID_LEDGER_RESPONSE",
+        retryable: false,
+      });
+    }
+    const receipts = payload.receipts.map(validateLifecycleReceipt);
+    receipts.forEach((receipt, index) => {
+      if (receipt.eventId !== events[index]?.eventId) {
+        throw new ProvenanceServiceError("Ledger service returned receipts in the wrong order or for the wrong events", {
+          code: "INVALID_LEDGER_RESPONSE",
+          retryable: false,
+        });
+      }
+    });
+    return receipts;
+  }
+
+  async getReceipt(eventId, recordHash) {
+    requireString(eventId, "eventId");
+    if (typeof recordHash !== "string" || !/^[0-9a-f]{64}$/u.test(recordHash)) {
+      throw new TypeError("recordHash must contain 64 lowercase hexadecimal characters");
+    }
+    const path = `/v2/receipts/${encodeURIComponent(eventId)}?recordHash=${encodeURIComponent(recordHash)}`;
+    const payload = await this.request(path);
+    if (payload.contractVersion !== 2) {
+      throw new ProvenanceServiceError("Ledger service returned an invalid receipt lookup response", {
+        code: "INVALID_LEDGER_RESPONSE",
+        retryable: false,
+      });
+    }
+    const receipt = validateLifecycleReceipt(payload.receipt);
+    if (receipt.eventId !== eventId || receipt.recordHash !== recordHash) {
+      throw new ProvenanceServiceError("Ledger service returned a receipt for different event content", {
+        code: "INVALID_LEDGER_RESPONSE",
+        retryable: false,
+      });
+    }
+    return receipt;
   }
 }

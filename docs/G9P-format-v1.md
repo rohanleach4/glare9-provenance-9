@@ -222,8 +222,7 @@ The prototype uses an atomic hard-link promotion on the local filesystem. A futu
 
 ## Known version 1 prototype boundaries
 
-- The writer currently batches events in memory before writing the segment.
-- The local writer is not yet a long-running ingestion service.
+- The standalone core writer accepts a bounded segment's events in memory; the ledger service manages long-running bounded active blocks and persists completed compressed blocks provisionally before sealing.
 - Routing supports a fixed hash policy and a configured shard count, but not routing-epoch transitions.
 - There is no checkpoint or witness container yet.
 - Events do not yet carry independent actor signatures.

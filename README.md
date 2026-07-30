@@ -12,6 +12,9 @@ The current first iteration can:
 - Persist and verify per-ledger signed epoch-zero routing history
 - Bind new epoch-scoped version 2 segments to their signed routing descriptor
 - Retain accepted events durably before assigning their routing epoch and shard
+- Batch accepted-first ingestion across bounded active blocks and segments
+- Recover completed provisional blocks and seal segments by byte, record, or age limits
+- Apply bounded intake and active-memory back-pressure before accepting excess work
 - Execute signed forward-only routing transitions across crash-safe barriers
 - Verify segments offline and distinguish an embedded key from a trusted key
 - Detect block mutation, signature mutation, truncation and incorrect chain links
@@ -48,6 +51,8 @@ npm run verify:epoch -- path/to/epoch-000001.g9p [trusted-key-id]
 
 The implementation now includes an experimental ledger-ingestion service and MySQL outbox connector, but it is not production-ready. Do not use it for production evidence, credentials or signing keys.
 
+The existing version 1 ingestion endpoint continues to wait for sealed receipts. The stable version 2 accepted-first contract allows active segments to span requests, returns explicit `accepted`, `provisional`, or `sealed` state, and provides authenticated receipt polling without changing the G9P container format. The MySQL connector uses durable `accepted` as the custody-transfer point.
+
 ## MySQL connector
 
 Local MySQL development uses the existing server administered through **MySQL Workbench**, not Docker. Review and apply the outbox migration through Workbench, then configure the ledger and connector using their ignored `.env` files.
@@ -68,6 +73,8 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-format-v1.md`](./docs/G9P-format-v1.md) — experimental byte-level format
 - [`docs/G9P-format-v2.md`](./docs/G9P-format-v2.md) — epoch-aware experimental segment format
 - [`docs/G9P-routing-epochs-v1.md`](./docs/G9P-routing-epochs-v1.md) — signed routing epochs and forward-only resharding protocol
+- [`docs/G9P-ingestion-receipts-v2.md`](./docs/G9P-ingestion-receipts-v2.md) — stable accepted-first ingestion and receipt-polling contract
+- [`docs/G9P-lifecycle-sizing-v1.md`](./docs/G9P-lifecycle-sizing-v1.md) — measured block, segment and age defaults
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open-source licence has not yet been selected or granted. Apache 2.0 is the current adoption-first preference, subject to formal approval.

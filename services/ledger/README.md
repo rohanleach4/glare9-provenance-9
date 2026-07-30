@@ -1,6 +1,6 @@
 # Glare•9 Provenance Ledger Service
 
-This workspace exposes the first authenticated ingestion boundary for database connectors. It durably retains versioned events before routing, seals `.g9p` segments synchronously and returns one receipt per event.
+This workspace exposes the authenticated ingestion boundary for database connectors. It durably retains versioned events before routing and manages bounded active blocks and segments. Contract version 1 seals synchronously; stable contract version 2 accepts first, allows segments to span requests and supports authenticated receipt polling.
 
 ## Configure
 
@@ -26,6 +26,8 @@ Default endpoints:
 GET  /health
 GET  /v1/info
 POST /v1/events:batch
+POST /v2/events:batch
+GET  /v2/receipts/<event-id>?recordHash=<expected-record-hash>
 POST /v1/admin/routing-transitions
 ```
 
@@ -37,7 +39,50 @@ Before an event is assigned to a routing epoch or shard, the service writes a ca
 
 After the applicable segment is sealed, the corresponding intake record is retired. On startup, the service strictly decodes and validates every retained record, removes records already represented by verified sealed history, promotes complete provisional records left by an interrupted write, and resumes sealing the remainder exactly once by event identity and canonical content.
 
-The public version 1 HTTP contract continues to drain accepted events synchronously and return `sealed` receipts. The internal `accepted` stage is intentionally topology-neutral so a routing-transition barrier can retain arrivals without assigning them to either the old or new epoch. A later contract version will expose accepted and provisional receipts explicitly.
+The public version 1 HTTP contract continues to drain accepted events synchronously and return `sealed` receipts. The `accepted` stage is intentionally topology-neutral so a routing-transition barrier can retain arrivals without assigning them to either the old or new epoch. Contract version 2 exposes accepted and provisional lifecycle receipts explicitly.
+
+## Bounded active lifecycle
+
+The version 2 endpoint returns HTTP 202 after durable intake and does not force an immediate seal. Accepted events are routed into one active segment per `(ledger, routing epoch, shard)`. Each stream has one bounded in-memory active block. When its byte or record limit is reached, the block is compressed and its exact compressed bytes, commitments and intake references are synchronised in service-local provisional state.
+
+An active segment seals when it reaches its configured byte limit, record limit or age. Completed block boundaries and compressed bytes are preserved in the final `.g9p` segment. On restart, provisional blocks are strictly decoded, decompressed and reconciled byte-for-byte with durable intake before they can be sealed. Retained intake remains authoritative until the final segment has been promoted and verified.
+
+Lifecycle configuration defaults:
+
+```text
+PROVENANCE_BLOCK_MAX_BYTES=1048576
+PROVENANCE_BLOCK_MAX_RECORDS=1000
+PROVENANCE_SEGMENT_MAX_BYTES=33554432
+PROVENANCE_SEGMENT_MAX_RECORDS=10000
+PROVENANCE_SEGMENT_MAX_AGE_MS=30000
+PROVENANCE_MAX_ACCEPTED_EVENTS=100000
+PROVENANCE_MAX_ACCEPTED_BYTES=1073741824
+PROVENANCE_MAX_ACTIVE_BLOCK_BYTES=16777216
+```
+
+The block and segment byte limits count uncompressed canonical framed-record bytes, making admission decisions possible before compression; final stored sizes vary with Zstandard output. These are deployment-policy starting points, not G9P format constants. Intake capacity and single-record active-memory fit are checked before new events are accepted. A full intake or active-memory budget returns retryable `LEDGER_BACKPRESSURE`; already accepted events are retained and never discarded to relieve pressure.
+
+The block, segment and age defaults are supported by the reproducible measurements in [`docs/G9P-lifecycle-sizing-v1.md`](../../docs/G9P-lifecycle-sizing-v1.md). Run `npm run benchmark:lifecycle` on representative deployment hardware before raising them.
+
+Receipt states are:
+
+- `accepted`: durable topology-neutral intake exists.
+- `provisional`: the record is in a completed, synchronised active block but has no final segment hash.
+- `sealed`: the record is included in a verified final `.g9p` segment.
+
+Every version 2 receipt contains `eventId`, `status`, `ledgerId` and the canonical `recordHash`. Accepted receipts additionally contain `intakeSequence` and `acceptedAt`. Provisional receipts retain those acceptance fields and add the routing epoch, shard, segment, block and record positions plus `openedAt`. Sealed receipts contain the routing epoch, shard, segment and record positions, exact segment hash and signer key identity.
+
+Poll receipt state with a percent-encoded event ID and the expected lowercase record hash:
+
+```text
+GET /v2/receipts/event-123?recordHash=<64 lowercase hexadecimal characters>
+```
+
+The lookup is authenticated and idempotent. Unknown events return `RECEIPT_NOT_FOUND` with HTTP 404. A known event ID paired with a different record hash returns `EVENT_ID_CONFLICT` with HTTP 409. State does not move backwards: a synchronised provisional block is recovered or sealed after restart, and sealed receipts are rebuilt from verified history. Polling is the stable notification mechanism in this version; no push callback is implied.
+
+A durable `accepted` receipt transfers custody to the ledger. The MySQL connector therefore stores the returned version 2 receipt and marks its outbox row delivered without waiting for segment age or size sealing. Final sealed state remains available through receipt polling.
+
+The exact public contract is specified in [`docs/G9P-ingestion-receipts-v2.md`](../../docs/G9P-ingestion-receipts-v2.md).
 
 `PROVENANCE_SHARD_COUNT` establishes epoch zero for new ledgers and must match an existing epoch-zero-only ledger. Once a signed transition exists, that ledger's active descriptor is authoritative.
 
@@ -66,13 +111,13 @@ curl -X POST http://127.0.0.1:8787/v1/admin/routing-transitions \
 
 The coordinator drains all earlier accepted events under the old policy, captures a complete old-shard head set, publishes and verifies the signed next-epoch descriptor, and then activates new epoch-scoped streams. Retrying the same requested transition after an uncertain response returns the already-active descriptor. Startup verifies every transition head before resuming retained intake under the published active epoch.
 
-Abandoned segment and routing `.g9p.part` files are explicitly provisional and are discarded on startup; their retained intake can then be sealed again. Complete durable-intake provisional records are promoted and recovered. Final `.g9p` files remain create-only and authoritative.
+Abandoned segment and routing `.g9p.part` files are explicitly provisional and are discarded on startup. Completed active-block state is recovered separately and must match durable intake exactly; otherwise startup fails closed. Complete durable-intake provisional records are promoted and recovered. Final `.g9p` files remain create-only and authoritative. If sealing succeeded before provisional cleanup, verified sealed history wins and stale active state is retired.
 
 The automated fault-injection suite interrupts intake append, compression, file and directory synchronisation, promotion, acknowledgement and both sides of routing-epoch publication. It then rebuilds the ledger from disk and checks exact event and epoch uniqueness.
 
 ## Current limitations
 
-- The public HTTP contract waits for sealing even though durable accepted intake now exists internally.
+- Contract version 1 waits for sealing. Version 2 uses polling and does not yet provide push notifications or witnessed finality.
 - Local filesystem storage is the only implementation.
 - The local signing key is not backed by a KMS or HSM.
 - The local topology-authority key is not backed by a KMS, HSM or customer approval policy.

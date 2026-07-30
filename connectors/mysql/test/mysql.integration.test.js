@@ -68,19 +68,17 @@ integration("repository leases, delivers, retries and dead-letters real MySQL ro
 
     const receipt = {
       eventId: deliveredEvent.eventId,
-      status: "sealed",
+      status: "accepted",
       ledgerId: deliveredEvent.ledgerId,
-      shardId: "shard-0000",
-      segmentNumber: 0,
-      recordIndex: 0,
       recordHash: "a".repeat(64),
-      segmentHash: "b".repeat(64),
-      signerKeyId: "c".repeat(64),
+      intakeSequence: 0,
+      acceptedAt: "2026-07-30T12:00:00.000Z",
     };
     await repository.markDelivered(deliveredClaim, [receipt]);
     const [[deliveredRow]] = await pool.query(`SELECT delivered_at, receipt FROM ${table} WHERE event_id = ?`, [deliveredEvent.eventId]);
     assert.ok(deliveredRow.delivered_at instanceof Date);
-    assert.equal(deliveredRow.receipt.segmentHash, receipt.segmentHash);
+    assert.equal(deliveredRow.receipt.status, "accepted");
+    assert.equal(deliveredRow.receipt.recordHash, receipt.recordHash);
 
     const failedEvent = sampleEvent("mysql-event-failed");
     await pool.execute(`INSERT INTO ${table} (event_id, envelope) VALUES (?, ?)`, [

@@ -71,11 +71,11 @@ async function writeLegacyHistory(directory, signer) {
   return legacyEvent;
 }
 
-async function fixture(run, { shardCount = 1 } = {}) {
+async function fixture(run, { shardCount = 1, lifecycle } = {}) {
   const directory = await mkdtemp(join(tmpdir(), "g9p-ledger-service-"));
   const signer = generateSigner();
   const topologyAuthority = generateSigner();
-  const ledger = await new LocalLedger({ dataDirectory: directory, signer, topologyAuthority, shardCount }).initialize();
+  const ledger = await new LocalLedger({ dataDirectory: directory, signer, topologyAuthority, shardCount, lifecycle }).initialize();
   const service = createLedgerServer({
     ledger,
     apiToken: "test-ledger-token",
@@ -90,8 +90,23 @@ async function fixture(run, { shardCount = 1 } = {}) {
     return await run({ directory, signer, topologyAuthority, ledger, service, client });
   } finally {
     await service.close();
+    await ledger.close({ seal: false });
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+function boundedLifecycle(overrides = {}) {
+  return {
+    blockMaxBytes: 1024 * 1024,
+    blockMaxRecords: 2,
+    segmentMaxBytes: 4 * 1024 * 1024,
+    segmentMaxRecords: 4,
+    segmentMaxAgeMs: 60_000,
+    maxAcceptedEvents: 100,
+    maxAcceptedBytes: 16 * 1024 * 1024,
+    maxActiveBlockBytes: 2 * 1024 * 1024,
+    ...overrides,
+  };
 }
 
 test("ingestion service seals events and returns stable idempotent receipts", async () => {
@@ -123,6 +138,178 @@ test("accepted events are durable before shard assignment or sealing", async () 
       (error) => error.code === "ENOENT",
     );
   });
+});
+
+test("bounded lifecycle batches records from separate accepted-first requests into completed blocks", async () => {
+  await fixture(async ({ directory, ledger }) => {
+    const first = await ledger.ingestAcceptedBatch([
+      event({ eventId: "bounded-event-1" }),
+      event({ eventId: "bounded-event-2", subject: "model:test-2" }),
+    ]);
+    assert.deepEqual(first.map((receipt) => receipt.status), ["provisional", "provisional"]);
+    assert.equal(ledger.info().activeSegments, 1);
+    assert.equal(ledger.info().provisionalEvents, 2);
+    await assert.rejects(
+      stat(segmentPath(directory, "connector-test-ledger")),
+      (error) => error.code === "ENOENT",
+    );
+
+    const second = await ledger.ingestAcceptedBatch([
+      event({ eventId: "bounded-event-3", subject: "model:test-3" }),
+      event({ eventId: "bounded-event-4", subject: "model:test-4" }),
+    ]);
+    assert.deepEqual(second.map((receipt) => receipt.status), ["sealed", "sealed"]);
+    const verified = await verifySegment(segmentPath(directory, "connector-test-ledger"));
+    assert.equal(verified.recordCount, 4);
+    assert.equal(verified.blockCount, 2);
+    assert.deepEqual(verified.events.map((item) => item.eventId), [
+      "bounded-event-1",
+      "bounded-event-2",
+      "bounded-event-3",
+      "bounded-event-4",
+    ]);
+    assert.equal(ledger.info().acceptedEvents, 0);
+    assert.equal(ledger.info().activeSegments, 0);
+  }, { lifecycle: boundedLifecycle() });
+});
+
+test("startup recovers a durable completed block and seals it exactly once", async () => {
+  await fixture(async ({ directory, signer, topologyAuthority, ledger }) => {
+    const [firstReceipt] = await ledger.ingestAcceptedBatch([
+      event({ eventId: "recovered-block-1" }),
+      event({ eventId: "recovered-block-2", subject: "model:recovered-2" }),
+    ]);
+    assert.equal((await readdir(join(directory, "provisional"))).length, 1);
+    const rebuilt = await new LocalLedger({
+      dataDirectory: directory,
+      signer,
+      topologyAuthority,
+      lifecycle: boundedLifecycle(),
+    }).initialize();
+    try {
+      const verified = await verifySegment(segmentPath(directory, "connector-test-ledger"));
+      assert.equal(verified.recordCount, 2);
+      assert.equal(verified.blockCount, 1);
+      assert.equal(rebuilt.info().knownEvents, 2);
+      assert.equal(rebuilt.info().acceptedEvents, 0);
+      assert.equal((await rebuilt.receipt("recovered-block-1", firstReceipt.recordHash)).status, "sealed");
+      assert.deepEqual(await readdir(join(directory, "provisional")), []);
+    } finally {
+      await rebuilt.close({ seal: false });
+    }
+  }, { lifecycle: boundedLifecycle() });
+});
+
+test("startup rejects corrupted completed-block provisional state", async () => {
+  await fixture(async ({ directory, signer, topologyAuthority, ledger }) => {
+    await ledger.ingestAcceptedBatch([
+      event({ eventId: "corrupt-block-1" }),
+      event({ eventId: "corrupt-block-2", subject: "model:corrupt-2" }),
+    ]);
+    const [name] = await readdir(join(directory, "provisional"));
+    const path = join(directory, "provisional", name);
+    const bytes = await readFile(path);
+    bytes[bytes.length - 1] ^= 0x01;
+    await writeFile(path, bytes);
+    await assert.rejects(
+      new LocalLedger({
+        dataDirectory: directory,
+        signer,
+        topologyAuthority,
+        lifecycle: boundedLifecycle(),
+      }).initialize(),
+      (error) => new Set(["ACTIVE_STATE_DECODE", "ACTIVE_STATE_VERSION", "ACTIVE_STATE_BLOCK", "ACTIVE_STATE_RECORD"]).has(error.code),
+    );
+  }, { lifecycle: boundedLifecycle() });
+});
+
+test("segment age seals a low-volume active block", async () => {
+  await fixture(async ({ directory, ledger }) => {
+    const [receipt] = await ledger.ingestAcceptedBatch([event({ eventId: "aged-event" })]);
+    assert.equal(receipt.status, "accepted");
+    assert.equal(ledger.info().activeSegments, 1);
+    await ledger.sealExpired(Date.now() + 1_000);
+    const verified = await verifySegment(segmentPath(directory, "connector-test-ledger"));
+    assert.equal(verified.recordCount, 1);
+    assert.equal(ledger.info().knownEvents, 1);
+    assert.equal(ledger.info().activeSegments, 0);
+  }, { lifecycle: boundedLifecycle({ segmentMaxAgeMs: 100 }) });
+});
+
+test("accepted-first admission applies retryable back-pressure before exceeding intake limits", async () => {
+  await fixture(async ({ ledger }) => {
+    const [accepted] = await ledger.ingestAcceptedBatch([event({ eventId: "capacity-event-1" })]);
+    assert.equal(accepted.status, "accepted");
+    await assert.rejects(
+      ledger.ingestAcceptedBatch([event({ eventId: "capacity-event-2" })]),
+      (error) => error.code === "LEDGER_BACKPRESSURE",
+    );
+    assert.equal(ledger.info().acceptedEvents, 1);
+  }, { lifecycle: boundedLifecycle({ maxAcceptedEvents: 1 }) });
+});
+
+test("active-memory back-pressure rejects an oversized event before durable acceptance", async () => {
+  await fixture(async ({ ledger }) => {
+    await assert.rejects(
+      ledger.ingestAcceptedBatch([event({
+        eventId: "oversized-active-event",
+        payload: { name: "x".repeat(2_000) },
+      })]),
+      (error) => error.code === "LEDGER_BACKPRESSURE",
+    );
+    assert.equal(ledger.info().acceptedEvents, 0);
+    assert.equal(ledger.info().acceptedBytes, 0);
+  }, { lifecycle: boundedLifecycle({ blockMaxBytes: 1024, maxActiveBlockBytes: 1024 }) });
+});
+
+test("version 2 HTTP ingestion returns accepted-stage receipts without forcing a seal", async () => {
+  await fixture(async ({ service, ledger }) => {
+    const address = service.server.address();
+    const response = await fetch(`http://127.0.0.1:${address.port}/v2/events:batch`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-ledger-token",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ contractVersion: 2, events: [event({ eventId: "http-accepted-event" })] }),
+    });
+    assert.equal(response.status, 202);
+    const payload = await response.json();
+    assert.equal(payload.contractVersion, 2);
+    assert.equal(payload.receipts[0].status, "accepted");
+    assert.equal(ledger.info().knownEvents, 0);
+    assert.equal(ledger.info().acceptedEvents, 1);
+  }, { lifecycle: boundedLifecycle() });
+});
+
+test("version 2 receipt lookup polls monotonically from accepted through provisional to sealed", async () => {
+  await fixture(async ({ client, ledger }) => {
+    const firstEvent = event({ eventId: "polled-event-1" });
+    const [accepted] = await client.submitAcceptedBatch([firstEvent]);
+    assert.equal(accepted.status, "accepted");
+    assert.deepEqual(await client.getReceipt(firstEvent.eventId, accepted.recordHash), accepted);
+
+    const secondEvent = event({ eventId: "polled-event-2", subject: "model:polled-2" });
+    const [second] = await client.submitAcceptedBatch([secondEvent]);
+    assert.equal(second.status, "provisional");
+    const provisional = await client.getReceipt(firstEvent.eventId, accepted.recordHash);
+    assert.equal(provisional.status, "provisional");
+    assert.equal(provisional.intakeSequence, accepted.intakeSequence);
+    assert.equal(provisional.acceptedAt, accepted.acceptedAt);
+
+    await ledger.drainAccepted();
+    const sealed = await client.getReceipt(firstEvent.eventId, accepted.recordHash);
+    assert.equal(sealed.status, "sealed");
+    assert.equal(sealed.recordHash, accepted.recordHash);
+    await assert.rejects(
+      client.getReceipt(firstEvent.eventId, "f".repeat(64)),
+      (error) => error.status === 409 && error.code === "EVENT_ID_CONFLICT" && error.retryable === false,
+    );
+    await assert.rejects(
+      client.getReceipt("unknown-event", "e".repeat(64)),
+      (error) => error.status === 404 && error.code === "RECEIPT_NOT_FOUND" && error.retryable === false,
+    );
+  }, { lifecycle: boundedLifecycle() });
 });
 
 test("durable acceptance is idempotent and rejects conflicting event content", async () => {
@@ -517,6 +704,10 @@ test("ingestion requires the configured bearer token", async () => {
     });
     await assert.rejects(
       unauthorised.submitBatch([event()]),
+      (error) => error instanceof ProvenanceServiceError && error.status === 401,
+    );
+    await assert.rejects(
+      unauthorised.getReceipt("event-001", "a".repeat(64)),
       (error) => error instanceof ProvenanceServiceError && error.status === 401,
     );
   });

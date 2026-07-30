@@ -1,5 +1,6 @@
 export { encodeCanonical, decodeCanonical } from "./codec/canonical.js";
 export { domainHash, generateSigner, publicKeyId, toHex, fromHex } from "./crypto.js";
+export { compressBlock, decompressBlock, ZSTD_PROFILE } from "./compression.js";
 export { canonicalEventBytes, decodeEvent, eventHash, eventHashHex, validateEvent } from "./event.js";
 export { G9pError } from "./errors.js";
 export { merkleRoot } from "./merkle.js";

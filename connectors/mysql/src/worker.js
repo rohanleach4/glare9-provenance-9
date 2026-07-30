@@ -68,7 +68,7 @@ export class MySqlConnectorWorker {
           });
         }
       }
-      const receipts = await this.provenanceClient.submitBatch(claimed.map((item) => item.envelope));
+      const receipts = await this.provenanceClient.submitAcceptedBatch(claimed.map((item) => item.envelope));
       await this.repository.markDelivered(claimed, receipts);
       this.status.deliveredEvents += claimed.length;
       this.status.lastSuccessAt = new Date().toISOString();

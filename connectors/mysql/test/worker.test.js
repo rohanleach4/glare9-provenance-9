@@ -13,14 +13,11 @@ const claimed = [{
 
 const receipt = {
   eventId: "event-1",
-  status: "sealed",
+  status: "accepted",
   ledgerId: "ledger-1",
-  shardId: "shard-0000",
-  segmentNumber: 0,
-  recordIndex: 0,
   recordHash: "a".repeat(64),
-  segmentHash: "b".repeat(64),
-  signerKeyId: "c".repeat(64),
+  intakeSequence: 12,
+  acceptedAt: "2026-07-30T12:00:00.000Z",
 };
 
 test("worker delivers leased rows and records receipts", async () => {
@@ -32,14 +29,15 @@ test("worker delivers leased rows and records receipts", async () => {
   };
   const worker = new MySqlConnectorWorker({
     repository,
-    provenanceClient: { submitBatch: async () => [receipt] },
+    provenanceClient: { submitAcceptedBatch: async () => [receipt] },
     connectorId: "connector-1",
     logger: { error: () => {} },
   });
 
   assert.equal(await worker.runOnce(), 1);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].receipts[0].segmentHash, receipt.segmentHash);
+  assert.equal(calls[0].receipts[0].status, "accepted");
+  assert.equal(calls[0].receipts[0].recordHash, receipt.recordHash);
   assert.equal(worker.snapshot().deliveredEvents, 1);
 });
 
@@ -58,7 +56,7 @@ test("worker releases failed deliveries with exponential backoff metadata", asyn
   };
   const worker = new MySqlConnectorWorker({
     repository,
-    provenanceClient: { submitBatch: async () => { throw error; } },
+    provenanceClient: { submitAcceptedBatch: async () => { throw error; } },
     connectorId: "connector-1",
     retryBaseMs: 1_000,
     retryMaxMs: 60_000,
@@ -85,7 +83,7 @@ test("worker dead-letters an outbox envelope whose event ID does not match", asy
   };
   const worker = new MySqlConnectorWorker({
     repository,
-    provenanceClient: { submitBatch: async () => assert.fail("submitBatch should not be called") },
+    provenanceClient: { submitAcceptedBatch: async () => assert.fail("submitAcceptedBatch should not be called") },
     connectorId: "connector-1",
     logger: { error: () => {} },
   });

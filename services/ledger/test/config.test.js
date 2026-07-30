@@ -37,3 +37,21 @@ test("routing administration is disabled by default and requires a separate long
     /must be different/u,
   );
 });
+
+test("bounded lifecycle limits have safe defaults and reject invalid values", () => {
+  const config = loadLedgerConfig(baseEnvironment);
+  assert.equal(config.lifecycle.blockMaxBytes, 1024 * 1024);
+  assert.equal(config.lifecycle.blockMaxRecords, 1_000);
+  assert.equal(config.lifecycle.segmentMaxBytes, 32 * 1024 * 1024);
+  assert.equal(config.lifecycle.segmentMaxRecords, 10_000);
+  assert.equal(config.lifecycle.segmentMaxAgeMs, 30_000);
+  assert.equal(config.lifecycle.maxAcceptedEvents, 100_000);
+  assert.throws(
+    () => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_BLOCK_MAX_BYTES: "100" }),
+    /between 1024/u,
+  );
+  assert.throws(
+    () => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_SEGMENT_MAX_AGE_MS: "not-a-number" }),
+    /must be an integer/u,
+  );
+});

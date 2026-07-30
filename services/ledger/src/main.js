@@ -15,6 +15,7 @@ async function main() {
     topologyAuthority,
     shardCount: config.shardCount,
     adoptLegacyRoutingHistory: config.adoptLegacyRoutingHistory,
+    lifecycle: config.lifecycle,
   }).initialize();
   const service = createLedgerServer({
     ledger,
@@ -36,6 +37,7 @@ async function main() {
   const stop = async (signal) => {
     console.log(JSON.stringify({ service: "glare9-provenance-ledger", status: "stopping", signal }));
     await service.close();
+    await ledger.close({ seal: true });
   };
   process.once("SIGINT", () => stop("SIGINT").then(() => process.exit(0)));
   process.once("SIGTERM", () => stop("SIGTERM").then(() => process.exit(0)));

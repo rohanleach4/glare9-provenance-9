@@ -43,5 +43,15 @@ export function loadLedgerConfig(environment = process.env) {
     adoptLegacyRoutingHistory: boolean(environment.PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY, false, "PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY"),
     maxBatchEvents: integer(environment.PROVENANCE_MAX_BATCH_EVENTS, 500, "PROVENANCE_MAX_BATCH_EVENTS", { min: 1, max: 10_000 }),
     maxRequestBytes: integer(environment.PROVENANCE_MAX_REQUEST_BYTES, 8 * 1024 * 1024, "PROVENANCE_MAX_REQUEST_BYTES", { min: 1024, max: 64 * 1024 * 1024 }),
+    lifecycle: Object.freeze({
+      blockMaxBytes: integer(environment.PROVENANCE_BLOCK_MAX_BYTES, 1024 * 1024, "PROVENANCE_BLOCK_MAX_BYTES", { min: 1024, max: 64 * 1024 * 1024 }),
+      blockMaxRecords: integer(environment.PROVENANCE_BLOCK_MAX_RECORDS, 1_000, "PROVENANCE_BLOCK_MAX_RECORDS", { min: 1, max: 100_000 }),
+      segmentMaxBytes: integer(environment.PROVENANCE_SEGMENT_MAX_BYTES, 32 * 1024 * 1024, "PROVENANCE_SEGMENT_MAX_BYTES", { min: 1024, max: 64 * 1024 * 1024 }),
+      segmentMaxRecords: integer(environment.PROVENANCE_SEGMENT_MAX_RECORDS, 10_000, "PROVENANCE_SEGMENT_MAX_RECORDS", { min: 1, max: 100_000 }),
+      segmentMaxAgeMs: integer(environment.PROVENANCE_SEGMENT_MAX_AGE_MS, 30_000, "PROVENANCE_SEGMENT_MAX_AGE_MS", { min: 100, max: 7 * 24 * 60 * 60 * 1000 }),
+      maxAcceptedEvents: integer(environment.PROVENANCE_MAX_ACCEPTED_EVENTS, 100_000, "PROVENANCE_MAX_ACCEPTED_EVENTS", { min: 1, max: 10_000_000 }),
+      maxAcceptedBytes: integer(environment.PROVENANCE_MAX_ACCEPTED_BYTES, 1024 * 1024 * 1024, "PROVENANCE_MAX_ACCEPTED_BYTES", { min: 1024, max: Number.MAX_SAFE_INTEGER }),
+      maxActiveBlockBytes: integer(environment.PROVENANCE_MAX_ACTIVE_BLOCK_BYTES, 16 * 1024 * 1024, "PROVENANCE_MAX_ACTIVE_BLOCK_BYTES", { min: 1024, max: 1024 * 1024 * 1024 }),
+    }),
   });
 }

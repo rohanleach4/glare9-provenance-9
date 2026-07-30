@@ -16,13 +16,13 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 
 ## Ledger durability and storage
 
-- [ ] Replace in-memory segment batching with a bounded active-block and active-segment lifecycle.
-- [ ] Set measured block-size, segment-size and segment-age deployment defaults.
+- [x] Replace in-memory segment batching with a bounded active-block and active-segment lifecycle.
+- [x] Set measured block-size, segment-size and segment-age deployment defaults with the reproducible lifecycle benchmark and sizing record.
 - [ ] Demonstrate crash safety at every sealing step, including file and directory synchronisation and create-only promotion.
 - [x] Define recovery behavior for abandoned `.g9p.part` files and interrupted writes.
 - [ ] Add a storage abstraction that preserves create-only sealing and independent verification.
 - [ ] Test backup, restore, retention and disaster recovery without rewriting sealed bytes.
-- [ ] Complete public accepted, provisional and sealed receipt stages; durable accepted-event retention is implemented, while the public contract still returns synchronous sealed receipts.
+- [x] Stabilise public accepted, provisional and sealed receipt stages with authenticated polling and accepted-first MySQL connector adoption; push notifications remain optional future work.
 - [ ] Implement checkpoint publication and independently administered witness operation.
 - [ ] Define projection and index rebuild procedures entirely from verified ledger history.
 

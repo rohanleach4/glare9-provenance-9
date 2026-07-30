@@ -103,6 +103,23 @@ for (const stage of [
   });
 }
 
+for (const stage of [
+  "active-state.after-file-sync",
+  "active-state.after-promotion",
+  "active-state.after-directory-sync",
+]) {
+  test(`fault at ${stage} recovers the completed provisional block exactly once`, async () => {
+    await temporaryLedger(async ({ directory, signer, topologyAuthority, ledger }) => {
+      await ledger.acceptBatch([event()]);
+      await assert.rejects(
+        ledger.drainAccepted(),
+        (error) => error.code === "ACTIVE_STATE_WRITE",
+      );
+      await rebuildAndAssertExactlyOnce({ directory, signer, topologyAuthority });
+    }, { testFaultInjector: failOnce(stage) });
+  });
+}
+
 test("lost acknowledgement is retryable and does not create a second segment", async () => {
   await temporaryLedger(async ({ directory, ledger }) => {
     const service = createLedgerServer({
@@ -129,6 +146,39 @@ test("lost acknowledgement is retryable and does not create a second segment", a
       const segmentRoot = join(directory, "segments");
       const entries = await readdir(segmentRoot, { recursive: true });
       assert.equal(entries.filter((name) => name.endsWith(".g9p")).length, 1);
+    } finally {
+      await service.close();
+    }
+  });
+});
+
+test("lost accepted-first acknowledgement retains one intake record and returns stable receipt state", async () => {
+  await temporaryLedger(async ({ directory, ledger }) => {
+    const service = createLedgerServer({
+      ledger,
+      apiToken: "fault-test-api-token",
+      testFaultInjector: failOnce("service.before-acknowledgement"),
+      logger: { error() {} },
+    });
+    const address = await service.listen({ host: "127.0.0.1", port: 0 });
+    const client = new ProvenanceClient({
+      baseUrl: `http://127.0.0.1:${address.port}`,
+      token: "fault-test-api-token",
+    });
+    try {
+      await assert.rejects(
+        client.submitAcceptedBatch([event()]),
+        (error) => error instanceof ProvenanceServiceError
+          && error.status === 500
+          && error.retryable === true,
+      );
+      const [receipt] = await client.submitAcceptedBatch([event()]);
+      assert.equal(receipt.status, "accepted");
+      assert.equal(ledger.info().acceptedEvents, 1);
+      assert.equal((await readdir(join(directory, "intake"))).length, 1);
+      assert.deepEqual(await client.getReceipt(event().eventId, receipt.recordHash), receipt);
+      await ledger.drainAccepted();
+      assert.equal((await client.getReceipt(event().eventId, receipt.recordHash)).status, "sealed");
     } finally {
       await service.close();
     }

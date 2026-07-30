@@ -97,9 +97,11 @@ The planner is read-only. It does not create segments, move records, edit servic
 9. Atomically promote `.g9p.part` to `.g9p`.
 10. Publish the new shard head for checkpoint witnessing.
 
+The reference service now implements this lifecycle with one bounded active block per active epoch-scoped shard and a global active-block memory budget. Completed blocks are compressed, retained in service-local provisional state and reconciled with durable intake on restart. Segment byte, record-count and age limits are deployment policy; reaching any segment limit forces sealing. A routing transition force-seals all old-epoch active state before recording the complete previous-head set.
+
 ## Initial sizing assumptions
 
-The following are measurement starting points, not protocol constants:
+The following are measured reference defaults, not protocol constants:
 
 - Uncompressed block target: 1–4 MiB
 - Final segment target: 16–64 MiB
@@ -107,6 +109,8 @@ The following are measurement starting points, not protocol constants:
 - Independent compression per block for random access and bounded recovery
 
 All limits belong in deployment policy or a signed ledger configuration record, not hard-coded into the permanent format.
+
+The current defaults are 1 MiB of uncompressed canonical framed records or 1,000 records per block, 32 MiB of the same logical bytes or 10,000 records per segment, and a 30-second segment age. Stored compressed sizes vary. The selection and reproducible benchmark are recorded in [`docs/G9P-lifecycle-sizing-v1.md`](./docs/G9P-lifecycle-sizing-v1.md). Deployments should rerun the benchmark with representative evidence before raising limits.
 
 ## Global checkpoints
 

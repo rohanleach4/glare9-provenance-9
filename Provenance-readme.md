@@ -203,6 +203,9 @@ The current JavaScript implementation includes:
 - Per-ledger signed epoch-zero routing history loaded and verified at service startup
 - Epoch-aware version 2 segments bound to the applicable signed routing descriptor
 - Crash-safe topology-neutral accepted-event intake with automatic restart recovery
+- Bounded epoch-scoped active blocks and active segments spanning accepted-first requests
+- Durable completed-block recovery with byte, record-count and age-based sealing
+- Intake and active-block back-pressure with explicit retryable rejection
 - Signed forward-only routing transitions with verified old-shard barriers and restart-safe activation
 - Create-only `.g9p.part` finalisation
 - An offline hostile-input verifier
@@ -213,7 +216,7 @@ The current JavaScript implementation includes:
 - A separately deployable MySQL transactional-outbox worker
 - Leased delivery, retry, dead-lettering and sealed-receipt persistence
 
-The current implementation deliberately does not yet include production key management, public asynchronous accepted/provisional receipt contracts, checkpoint services, witness nodes, CDC reconciliation or database projections. Routing transitions use a separate local administration credential and topology-authority key, neither of which is a production authorization system. The local service stores generated development keys under its ignored data directory; this is not a production key manager.
+The current implementation deliberately does not yet include production key management, receipt notifications, checkpoint services, witness nodes, CDC reconciliation or database projections. HTTP contract version 2 provides stable accepted-first lifecycle receipts and authenticated polling, while version 1 remains synchronously sealed for compatibility. Routing transitions use a separate local administration credential and topology-authority key, neither of which is a production authorization system. The local service stores generated development keys under its ignored data directory; this is not a production key manager.
 
 ## Connecting a service
 
@@ -224,7 +227,7 @@ The preferred connection methods are:
 3. Add change-data capture for legacy integration and reconciliation.
 4. Use webhooks or signed batch manifests where direct integration is unavailable.
 
-The current ingestion service seals synchronously and returns a sealed receipt. A later durable service will distinguish accepted, sealed and witnessed receipt stages.
+The version 1 ingestion endpoint seals synchronously and returns a sealed receipt. Version 2 durably accepts without forcing a seal and returns `accepted`, `provisional`, or `sealed`. Clients poll the authenticated receipt endpoint using both event ID and expected record hash. Durable acceptance transfers custody to the ledger; witnessed receipts and push notifications remain future work.
 
 ## Hosting models
 
@@ -246,4 +249,6 @@ The licence remains to be formally selected. Apache 2.0 is the current adoption-
 - `Sharding-readme.md`: shard routing, segments, checkpoints and topology changes
 - `Connector-readme.md`: MySQL and future source integrations
 - `Test-readme.md`: verification and testing strategy
+- `docs/G9P-ingestion-receipts-v2.md`: stable accepted-first ingestion and receipt polling
+- `docs/G9P-lifecycle-sizing-v1.md`: reproducible lifecycle benchmark and measured deployment defaults
 - `Global-readme.md`: ignored local build instructions

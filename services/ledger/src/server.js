@@ -20,6 +20,13 @@ function sendJson(response, status, payload) {
   response.end(bytes);
 }
 
+function hasExactFields(value, fields) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...fields].sort();
+  return actual.length === expected.length && actual.every((field, index) => field === expected[index]);
+}
+
 async function readJson(request, maxBytes) {
   const chunks = [];
   let length = 0;
@@ -40,14 +47,16 @@ async function readJson(request, maxBytes) {
 function errorStatus(error) {
   if (error.code === "REQUEST_TOO_LARGE") return 413;
   if (error.code === "EVENT_ID_CONFLICT") return 409;
-  if (new Set(["SEGMENT_WRITE", "COMPRESS_FAILED"]).has(error.code)) return 503;
+  if (error.code === "RECEIPT_NOT_FOUND") return 404;
+  if (error.code === "LEDGER_BACKPRESSURE") return 429;
+  if (new Set(["INTAKE_WRITE", "ACTIVE_STATE_WRITE", "SEGMENT_WRITE", "COMPRESS_FAILED"]).has(error.code)) return 503;
   if (error instanceof G9pError) return 400;
   return 500;
 }
 
 function retryable(error) {
   if (!(error instanceof G9pError)) return true;
-  return new Set(["SEGMENT_WRITE", "COMPRESS_FAILED"]).has(error.code);
+  return new Set(["INTAKE_WRITE", "ACTIVE_STATE_WRITE", "SEGMENT_WRITE", "COMPRESS_FAILED", "LEDGER_BACKPRESSURE"]).has(error.code);
 }
 
 export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvents = 500, maxRequestBytes = 8 * 1024 * 1024, logger = console, testFaultInjector }) {
@@ -93,6 +102,21 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
         return;
       }
 
+      if (request.method === "GET" && url.pathname.startsWith("/v2/receipts/")) {
+        let eventId;
+        try {
+          eventId = decodeURIComponent(url.pathname.slice("/v2/receipts/".length));
+        } catch (error) {
+          throw new G9pError("RECEIPT_EVENT_ID", "Receipt lookup contains an invalid encoded event ID", { cause: error });
+        }
+        if (url.searchParams.size !== 1 || !url.searchParams.has("recordHash")) {
+          throw new G9pError("RECEIPT_RECORD_HASH", "Receipt lookup requires exactly one recordHash query parameter");
+        }
+        const receipt = await ledger.receipt(eventId, url.searchParams.get("recordHash"));
+        sendJson(response, 200, { contractVersion: 2, receipt, requestId });
+        return;
+      }
+
       if (request.method === "POST" && url.pathname === "/v1/events:batch") {
         const body = await readJson(request, maxRequestBytes);
         if (body?.contractVersion !== 1 || !Array.isArray(body.events) || body.events.length < 1 || body.events.length > maxBatchEvents) {
@@ -101,6 +125,18 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
         const receipts = await ledger.ingestBatch(body.events);
         testFaultInjector?.("service.before-acknowledgement", { requestId, receipts });
         sendJson(response, 200, { contractVersion: 1, receipts, requestId });
+        return;
+      }
+
+      if (request.method === "POST" && url.pathname === "/v2/events:batch") {
+        const body = await readJson(request, maxRequestBytes);
+        if (!hasExactFields(body, ["contractVersion", "events"])
+          || body.contractVersion !== 2 || !Array.isArray(body.events) || body.events.length < 1 || body.events.length > maxBatchEvents) {
+          throw new G9pError("INVALID_BATCH", `Request must contain contractVersion 2 and between 1 and ${maxBatchEvents} events`);
+        }
+        const receipts = await ledger.ingestAcceptedBatch(body.events);
+        testFaultInjector?.("service.before-acknowledgement", { requestId, receipts });
+        sendJson(response, 202, { contractVersion: 2, receipts, requestId });
         return;
       }
 

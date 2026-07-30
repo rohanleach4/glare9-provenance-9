@@ -125,6 +125,14 @@ Run the same suite with Node's built-in coverage report:
 npm run test:coverage
 ```
 
+Run the separate lifecycle sizing benchmark:
+
+```bash
+npm run benchmark:lifecycle
+```
+
+It measures block and segment sweeps for compressible and high-entropy evidence, verifies every generated segment and emits JSON results. It is intentionally excluded from `test:all` because performance results are hardware-dependent.
+
 The current suite covers:
 
 - Deterministic canonical map ordering and round trips
@@ -143,6 +151,10 @@ The current suite covers:
 - Signed routing-epoch creation, chaining, trust and hostile-input rejection
 - Ledger routing-history creation, descriptor-bound segments, legacy migration, restart, mismatch and tamper handling
 - Durable accepted-event retention, idempotency, provisional promotion, corruption rejection and restart sealing
+- Cross-request bounded block/segment batching, explicit block-boundary preservation and age sealing
+- Durable compressed provisional-block recovery and retryable intake back-pressure
+- Strict accepted/provisional/sealed receipt schemas and authenticated monotonic polling
+- Accepted-first connector custody transfer and lost-acknowledgement replay
 - Signed transition barriers, credential separation, retry idempotency, missing-head rejection and epoch activation recovery
 - Injected intake-append, compression, file-sync, directory-sync, promotion and acknowledgement failures
 - Restart invariants before and after signed routing-epoch publication
@@ -168,7 +180,7 @@ The opt-in test creates and drops only a uniquely named temporary outbox table. 
 
 The ledger service exposes narrowly named `testFaultInjector` hooks only through direct construction in the test process. Production configuration and HTTP requests cannot enable them. The suite interrupts durable intake, compression, sealed-file synchronisation, create-only promotion, response acknowledgement and routing-epoch publication.
 
-Every injected case restarts from the same filesystem state and checks that an event is retained or sealed exactly once. Transition tests cover both sides of the publication boundary: before publication the old epoch remains authoritative; after publication restart must activate the signed new epoch. These deterministic tests do not replace future abrupt-process, filesystem, power-loss or hardware fault testing.
+Every injected case restarts from the same filesystem state and checks that an event is retained or sealed exactly once. Active-state injection covers file synchronisation, promotion and directory synchronisation for completed compressed provisional blocks. Transition tests cover both sides of the publication boundary: before publication the old epoch remains authoritative; after publication restart must activate the signed new epoch. These deterministic tests do not replace future abrupt-process, filesystem, power-loss or hardware fault testing.
 
 The repository should eventually provide additional stable commands for:
 
