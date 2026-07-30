@@ -5,7 +5,8 @@ export { canonicalEventBytes, decodeEvent, eventHash, eventHashHex, validateEven
 export { G9pError } from "./errors.js";
 export { merkleRoot } from "./merkle.js";
 export { planShardAssignments } from "./shard-planner.js";
-export { writeRoutingEpoch, verifyRoutingEpoch, routingEpochLimits } from "./routing-epoch.js";
+export { writeRoutingEpoch, verifyRoutingEpoch, verifyRoutingEpochBytes, routingEpochLimits } from "./routing-epoch.js";
+export { LocalFilesystemSealedStorage, requireSealedStorage, sealedStorageLimits } from "./sealed-storage.js";
 export { createRoutingPolicy, routeEvent, ROUTING_POLICY_ID } from "./sharding.js";
 export { writeSegment } from "./segment-writer.js";
-export { verifySegment, verifierLimits } from "./segment-verifier.js";
+export { verifySegment, verifySegmentBytes, verifierLimits } from "./segment-verifier.js";

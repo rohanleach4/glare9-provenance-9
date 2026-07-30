@@ -9,6 +9,7 @@ import {
   domainHash,
   fromHex,
   generateSigner,
+  G9pError,
   routeEvent,
   toHex,
   verifyRoutingEpoch,
@@ -24,6 +25,31 @@ import { LocalLedger } from "../src/local-ledger.js";
 import { createLedgerServer } from "../src/server.js";
 
 const timestamp = "2026-07-28T12:00:00.000Z";
+
+class MemorySealedStorage {
+  constructor() {
+    this.objects = new Map();
+  }
+
+  async initialize() {}
+
+  async publish(key, bytes, options = {}) {
+    if (this.objects.has(key)) {
+      throw new G9pError(options.errorCode ?? "SEALED_STORAGE_WRITE", `Object ${key} already exists`);
+    }
+    this.objects.set(key, Uint8Array.from(bytes));
+  }
+
+  async read(key) {
+    const bytes = this.objects.get(key);
+    if (bytes === undefined) throw new G9pError("SEALED_STORAGE_NOT_FOUND", `Object ${key} does not exist`);
+    return Uint8Array.from(bytes);
+  }
+
+  async list(prefix) {
+    return [...this.objects.keys()].filter((key) => key.startsWith(prefix)).sort();
+  }
+}
 
 function event(overrides = {}) {
   return {
@@ -108,6 +134,39 @@ function boundedLifecycle(overrides = {}) {
     ...overrides,
   };
 }
+
+test("ledger rebuilds and preserves idempotency through an injected sealed-storage implementation", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "g9p-ledger-storage-abstraction-"));
+  const signer = generateSigner();
+  const topologyAuthority = generateSigner();
+  const sealedStorage = new MemorySealedStorage();
+  try {
+    const first = await new LocalLedger({
+      dataDirectory: directory,
+      signer,
+      topologyAuthority,
+      sealedStorage,
+    }).initialize();
+    const [original] = await first.ingestBatch([event()]);
+    await first.close({ seal: false });
+
+    assert.equal((await sealedStorage.list("routing/")).length, 1);
+    assert.equal((await sealedStorage.list("segments/")).length, 1);
+
+    const rebuilt = await new LocalLedger({
+      dataDirectory: directory,
+      signer,
+      topologyAuthority,
+      sealedStorage,
+    }).initialize();
+    assert.equal(rebuilt.info().knownEvents, 1);
+    const [replayed] = await rebuilt.ingestBatch([event()]);
+    assert.deepEqual(replayed, original);
+    await rebuilt.close({ seal: false });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("ingestion service seals events and returns stable idempotent receipts", async () => {
   await fixture(async ({ directory, client, ledger }) => {

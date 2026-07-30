@@ -170,7 +170,7 @@ The implemented local service topology is:
 
 ```text
 Authenticated Provenance ingestion service
-Segment writer and local storage
+Segment writer and sealed-storage contract
 Reader/verifier
 Independent MySQL connector service
 MySQL Workbench-managed local server
@@ -208,6 +208,7 @@ The current JavaScript implementation includes:
 - Intake and active-block back-pressure with explicit retryable rejection
 - Signed forward-only routing transitions with verified old-shard barriers and restart-safe activation
 - Create-only `.g9p.part` finalisation
+- Injectable sealed storage with a bundled local-filesystem adapter and independent byte verification
 - An offline hostile-input verifier
 - A CLI demonstration and verification command
 - An authenticated, versioned batch-ingestion API
@@ -252,4 +253,5 @@ The licence remains to be formally selected. Apache 2.0 is the current adoption-
 - `docs/G9P-ingestion-receipts-v2.md`: stable accepted-first ingestion and receipt polling
 - `docs/G9P-lifecycle-sizing-v1.md`: reproducible lifecycle benchmark and measured deployment defaults
 - `docs/G9P-sealing-crash-safety-v1.md`: local sealing-boundary state and recovery demonstration
+- `docs/G9P-sealed-storage-v1.md`: immutable sealed-object storage contract and local adapter
 - `Global-readme.md`: ignored local build instructions

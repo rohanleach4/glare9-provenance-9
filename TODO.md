@@ -20,7 +20,7 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Set measured block-size, segment-size and segment-age deployment defaults with the reproducible lifecycle benchmark and sizing record.
 - [x] Demonstrate crash safety at every local-filesystem sealing boundary with deterministic state inspection and exactly-once restart recovery, including file and directory synchronisation and create-only promotion; deployment-specific power-loss qualification remains operational work.
 - [x] Define recovery behavior for abandoned `.g9p.part` files and interrupted writes.
-- [ ] Add a storage abstraction that preserves create-only sealing and independent verification.
+- [x] Add the sealed-storage contract and local filesystem adapter with create-only publication, bounded reads, opaque-key history reconstruction and storage-neutral byte verification.
 - [ ] Test backup, restore, retention and disaster recovery without rewriting sealed bytes.
 - [x] Stabilise public accepted, provisional and sealed receipt stages with authenticated polling and accepted-first MySQL connector adoption; push notifications remain optional future work.
 - [ ] Implement checkpoint publication and independently administered witness operation.

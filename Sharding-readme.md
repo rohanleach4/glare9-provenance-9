@@ -99,6 +99,8 @@ The planner is read-only. It does not create segments, move records, edit servic
 
 The reference service now implements this lifecycle with one bounded active block per active epoch-scoped shard and a global active-block memory budget. Completed blocks are compressed, retained in service-local provisional state and reconciled with durable intake on restart. Segment byte, record-count and age limits are deployment policy; reaching any segment limit forces sealing. A routing transition force-seals all old-epoch active state before recording the complete previous-head set.
 
+Final segment and routing-epoch publication is accessed through the sealed-storage contract. The bundled local adapter retains the create-only `.g9p.part` sequence above; another adapter must provide equivalent atomic create-only publication and exact-byte reads. Verification accepts independently retrieved bytes and does not treat the storage backend as a trust root. See [`docs/G9P-sealed-storage-v1.md`](./docs/G9P-sealed-storage-v1.md).
+
 ## Initial sizing assumptions
 
 The following are measured reference defaults, not protocol constants:

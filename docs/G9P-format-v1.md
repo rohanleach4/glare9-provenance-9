@@ -222,6 +222,8 @@ The prototype uses an atomic hard-link promotion on the local filesystem. A futu
 
 The reference service's interruption states and exactly-once recovery demonstration are recorded in `G9P-sealing-crash-safety-v1.md`. This is implementation assurance and does not alter the version 1 byte format.
 
+The storage-neutral publication and byte-verification boundary is documented in `G9P-sealed-storage-v1.md`. Storage keys and adapters are not part of the version 1 byte format or cryptographic identity.
+
 ## Known version 1 prototype boundaries
 
 - The standalone core writer accepts a bounded segment's events in memory; the ledger service manages long-running bounded active blocks and persists completed compressed blocks provisionally before sealing.

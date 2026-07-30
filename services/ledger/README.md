@@ -88,6 +88,8 @@ The exact public contract is specified in [`docs/G9P-ingestion-receipts-v2.md`](
 
 Before writing a ledger's first segment, the service creates a signed epoch-zero descriptor under `routing/<ledger-directory>/epoch-000000000000.g9p`. Startup verifies that descriptor with the local topology-authority identity and derives the ledger's permitted routing policy from it. New ledgers store epoch-aware version 2 segments under `segments/<ledger-directory>/epoch-000000000000/shard-0000/`; every segment authenticates the epoch number and exact descriptor hash.
 
+Immutable routing descriptors and segments are accessed through the sealed-storage contract. The bundled `LocalFilesystemSealedStorage` preserves these paths and remains the default. Embedded service deployments may inject another implementation into `LocalLedger`; it must provide create-only atomic publication, bounded exact-byte reads, deterministic final-key listing and its own incomplete-publication recovery. Durable intake, active-block state and development keys remain separate local service state. See [`docs/G9P-sealed-storage-v1.md`](../../docs/G9P-sealed-storage-v1.md).
+
 Legacy version 1 history without a descriptor fails closed by default. For one reviewed migration startup, set `PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY=true` to create an epoch-zero adoption descriptor after all existing segments pass verification. Disable the option again after migration. Sealed segment bytes are never changed.
 
 ## Routing transitions
@@ -118,7 +120,7 @@ The automated fault-injection suite interrupts intake append, compression, file 
 ## Current limitations
 
 - Contract version 1 waits for sealing. Version 2 uses polling and does not yet provide push notifications or witnessed finality.
-- Local filesystem storage is the only implementation.
+- Local filesystem storage is the only bundled implementation; other adapters require deployment-specific durability and security qualification.
 - The local signing key is not backed by a KMS or HSM.
 - The local topology-authority key is not backed by a KMS, HSM or customer approval policy.
 - Existing history is expected to use the current local signer.

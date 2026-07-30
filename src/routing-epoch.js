@@ -12,6 +12,7 @@ import {
 import { fail, invariant } from "./errors.js";
 import { encodeFrame, FrameReader, FRAME_TYPES, G9P_MAGIC_V2 } from "./format/framing.js";
 import { writeExclusiveAndPromote } from "./sealed-file.js";
+import { requireSealedStorage } from "./sealed-storage.js";
 import { ROUTING_POLICY_ID } from "./sharding.js";
 
 const DESCRIPTOR_KIND = "g9p-routing-epoch";
@@ -227,6 +228,8 @@ function descriptorForWrite({
 
 export async function writeRoutingEpoch({
   outputPath,
+  sealedStorage,
+  storageKey,
   ledgerId,
   epochNumber,
   routingPolicy,
@@ -265,15 +268,25 @@ export async function writeRoutingEpoch({
     encodeFrame(FRAME_TYPES.end),
   ]);
 
-  await writeExclusiveAndPromote(outputPath, fileBytes, {
-    errorCode: "EPOCH_WRITE",
-    extensionErrorCode: "EPOCH_EXTENSION",
-    description: "sealed routing epoch",
-    testFaultInjector,
-  });
+  if (sealedStorage === undefined) {
+    await writeExclusiveAndPromote(outputPath, fileBytes, {
+      errorCode: "EPOCH_WRITE",
+      extensionErrorCode: "EPOCH_EXTENSION",
+      description: "sealed routing epoch",
+      testFaultInjector,
+    });
+  } else {
+    invariant(typeof storageKey === "string" && storageKey.length > 0, "EPOCH_STORAGE_KEY", "A sealed storage key is required");
+    await requireSealedStorage(sealedStorage).publish(storageKey, fileBytes, {
+      errorCode: "EPOCH_WRITE",
+      extensionErrorCode: "EPOCH_EXTENSION",
+      description: "sealed routing epoch",
+      testFaultInjector,
+    });
+  }
 
   return {
-    outputPath,
+    outputPath: storageKey ?? outputPath,
     ledgerId: descriptor.ledgerId,
     epochNumber: descriptor.epochNumber,
     routingPolicy: descriptor.routingPolicy,
@@ -289,7 +302,14 @@ export async function verifyRoutingEpoch(path, options = {}) {
   const fileStat = await stat(path);
   invariant(fileStat.isFile(), "EPOCH_FILE", "Routing epoch path is not a file");
   invariant(fileStat.size <= limits.maxFileBytes, "EPOCH_FILE_LIMIT", `Routing epoch exceeds the ${limits.maxFileBytes} byte file limit`);
-  const fileBytes = await readFile(path);
+  return verifyRoutingEpochBytes(await readFile(path), { ...options, source: path });
+}
+
+export async function verifyRoutingEpochBytes(bytes, options = {}) {
+  const limits = { ...DEFAULT_LIMITS, ...options.limits };
+  invariant(bytes instanceof Uint8Array, "EPOCH_FILE", "Routing epoch content must be bytes");
+  invariant(bytes.byteLength <= limits.maxFileBytes, "EPOCH_FILE_LIMIT", `Routing epoch exceeds the ${limits.maxFileBytes} byte file limit`);
+  const fileBytes = Buffer.from(bytes);
 
   const reader = new FrameReader(fileBytes, { maxFrameBytes: limits.maxFrameBytes });
   reader.readMagic(G9P_MAGIC_V2);
@@ -349,7 +369,7 @@ export async function verifyRoutingEpoch(path, options = {}) {
   const epochHash = domainHash("routing-epoch-v1", descriptorFrame.payload);
   return {
     valid: true,
-    path,
+    path: options.source ?? null,
     containerVersion: 2,
     protocolVersion: descriptor.protocolVersion,
     ledgerId: descriptor.ledgerId,

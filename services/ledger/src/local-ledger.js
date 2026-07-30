@@ -1,4 +1,3 @@
-import { mkdir, open, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
@@ -10,11 +9,13 @@ import {
   eventHashHex,
   fromHex,
   G9pError,
+  LocalFilesystemSealedStorage,
+  requireSealedStorage,
   routeEvent,
   toHex,
   validateEvent,
-  verifyRoutingEpoch,
-  verifySegment,
+  verifyRoutingEpochBytes,
+  verifySegmentBytes,
   writeRoutingEpoch,
   writeSegment,
 } from "@glare9/provenance";
@@ -27,7 +28,7 @@ const DEFAULT_LIFECYCLE = Object.freeze({
   blockMaxRecords: 1_000,
   segmentMaxBytes: 32 * 1024 * 1024,
   segmentMaxRecords: 10_000,
-  segmentMaxAgeMs: 60_000,
+  segmentMaxAgeMs: 30_000,
   maxAcceptedEvents: 100_000,
   maxAcceptedBytes: 1024 * 1024 * 1024,
   maxActiveBlockBytes: 16 * 1024 * 1024,
@@ -103,70 +104,6 @@ function routingPoliciesEqual(left, right) {
     && left.shardCount === right.shardCount;
 }
 
-async function directories(path) {
-  try {
-    return (await readdir(path, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-}
-
-async function syncDirectory(path) {
-  const handle = await open(path, "r");
-  try {
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
-}
-
-async function discardProvisionalFiles(path, pattern) {
-  let changed = false;
-  try {
-    for (const entry of await readdir(path, { withFileTypes: true })) {
-      if (!entry.isFile() || !pattern.test(entry.name)) continue;
-      await unlink(join(path, entry.name));
-      changed = true;
-    }
-    if (changed) await syncDirectory(path);
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
-}
-
-async function files(path) {
-  try {
-    return (await readdir(path, { withFileTypes: true }))
-      .filter((entry) => entry.isFile() && /^segment-[0-9]{12}\.g9p$/u.test(entry.name))
-      .map((entry) => entry.name)
-      .sort();
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-}
-
-async function routingEpochFiles(path) {
-  try {
-    const entries = await readdir(path, { withFileTypes: true });
-    const unexpected = entries.find((entry) => entry.isFile() && entry.name.endsWith(".g9p") && !/^epoch-[0-9]{12}\.g9p$/u.test(entry.name));
-    if (unexpected !== undefined) {
-      throw new G9pError("LEDGER_ROUTING_FILE", `Unexpected sealed routing file ${unexpected.name} in ${path}`);
-    }
-    return entries
-      .filter((entry) => entry.isFile() && /^epoch-[0-9]{12}\.g9p$/u.test(entry.name))
-      .map((entry) => entry.name)
-      .sort();
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-}
-
 export class LocalLedger {
   constructor({
     dataDirectory,
@@ -175,20 +112,21 @@ export class LocalLedger {
     shardCount = 1,
     adoptLegacyRoutingHistory = false,
     lifecycle,
+    sealedStorage,
     testFaultInjector,
   }) {
     if (topologyAuthority?.algorithm !== "ed25519" || !topologyAuthority.privateKey || !(topologyAuthority.publicKeyDer instanceof Uint8Array)) {
       throw new G9pError("LEDGER_TOPOLOGY_AUTHORITY", "A local Ed25519 topology authority is required");
     }
     this.dataDirectory = dataDirectory;
-    this.segmentDirectory = join(dataDirectory, "segments");
-    this.routingDirectory = join(dataDirectory, "routing");
     this.intakeDirectory = join(dataDirectory, "intake");
     this.activeStateDirectory = join(dataDirectory, "provisional");
     this.signer = signer;
     this.topologyAuthority = topologyAuthority;
     this.adoptLegacyRoutingHistory = adoptLegacyRoutingHistory;
     this.testFaultInjector = testFaultInjector;
+    this.sealedStorage = requireSealedStorage(sealedStorage
+      ?? new LocalFilesystemSealedStorage(dataDirectory, { testFaultInjector }));
     this.defaultRoutingPolicy = createRoutingPolicy(shardCount);
     this.lifecycle = lifecycleConfig(lifecycle);
     this.routingEpochs = new Map();
@@ -211,40 +149,33 @@ export class LocalLedger {
   }
 
   async initialize() {
-    await mkdir(this.segmentDirectory, { recursive: true });
-    await mkdir(this.routingDirectory, { recursive: true });
+    await this.sealedStorage.initialize();
     await this.#loadRoutingEpochs();
     const historicalLedgers = new Set();
-    for (const ledgerDirectory of await directories(this.segmentDirectory)) {
-      const ledgerPath = join(this.segmentDirectory, ledgerDirectory);
-      const childDirectories = await directories(ledgerPath);
-      for (const shardId of childDirectories.filter((name) => /^shard-[0-9]{4}$/u.test(name))) {
-        const ledgerId = await this.#loadShardHistory({
-          ledgerDirectory,
-          shardId,
-          shardPath: join(ledgerPath, shardId),
-          routingEpoch: null,
-        });
-        if (ledgerId !== undefined) historicalLedgers.add(ledgerId);
+    const histories = new Map();
+    for (const key of await this.sealedStorage.list("segments/")) {
+      const v1 = /^segments\/([0-9a-f]{64})\/(shard-[0-9]{4})\/(segment-[0-9]{12}\.g9p)$/u.exec(key);
+      const v2 = /^segments\/([0-9a-f]{64})\/(epoch-([0-9]{12}))\/(shard-[0-9]{4})\/(segment-[0-9]{12}\.g9p)$/u.exec(key);
+      if (v1 === null && v2 === null) {
+        throw new G9pError("LEDGER_SEGMENT_FILE", `Unexpected sealed segment storage key ${key}`);
       }
-      for (const epochDirectory of childDirectories.filter((name) => /^epoch-[0-9]{12}$/u.test(name))) {
-        const epochNumber = Number(epochDirectory.slice(6));
-        const routingEpoch = this.routingEpochDirectories.get(epochStorageKey(ledgerDirectory, epochNumber));
-        if (routingEpoch === undefined) {
-          throw new G9pError("LEDGER_ROUTING_EPOCH", `Segment directory ${epochDirectory} has no matching signed routing epoch`);
-        }
-        const epochPath = join(ledgerPath, epochDirectory);
-        for (const shardId of await directories(epochPath)) {
-          if (!/^shard-[0-9]{4}$/u.test(shardId)) continue;
-          const ledgerId = await this.#loadShardHistory({
-            ledgerDirectory,
-            shardId,
-            shardPath: join(epochPath, shardId),
-            routingEpoch,
-          });
-          if (ledgerId !== undefined) historicalLedgers.add(ledgerId);
-        }
+      const ledgerDirectory = (v1 ?? v2)[1];
+      const epochNumber = v1 === null ? Number(v2[3]) : null;
+      const shardId = v1?.[2] ?? v2[4];
+      const groupKey = `${ledgerDirectory}\0${epochNumber ?? "legacy"}\0${shardId}`;
+      const group = histories.get(groupKey) ?? { ledgerDirectory, epochNumber, shardId, keys: [] };
+      group.keys.push(key);
+      histories.set(groupKey, group);
+    }
+    for (const history of [...histories.values()].sort((left, right) => left.keys[0].localeCompare(right.keys[0]))) {
+      const routingEpoch = history.epochNumber === null
+        ? null
+        : this.routingEpochDirectories.get(epochStorageKey(history.ledgerDirectory, history.epochNumber));
+      if (history.epochNumber !== null && routingEpoch === undefined) {
+        throw new G9pError("LEDGER_ROUTING_EPOCH", `Segment storage prefix for epoch ${history.epochNumber} has no matching signed routing epoch`);
       }
+      const ledgerId = await this.#loadShardHistory({ ...history, routingEpoch });
+      if (ledgerId !== undefined) historicalLedgers.add(ledgerId);
     }
     for (const ledgerId of historicalLedgers) {
       if (!this.routingEpochs.has(ledgerId) && !this.adoptLegacyRoutingHistory) {
@@ -382,7 +313,7 @@ export class LocalLedger {
         shardId: stored.shardId,
         epochNumber: stored.epochNumber,
         formatVersion: stored.formatVersion,
-        directory: state?.directory ?? this.#segmentDirectory(stored.ledgerId, stored.epochNumber, stored.shardId, stored.formatVersion),
+        directory: state?.directory ?? this.#segmentPrefix(stored.ledgerId, stored.epochNumber, stored.shardId, stored.formatVersion),
         segmentNumber: stored.segmentNumber,
         previousSegmentHash: expectedPrevious,
         openedAt: stored.openedAt,
@@ -398,16 +329,17 @@ export class LocalLedger {
     }
   }
 
-  async #loadShardHistory({ ledgerDirectory, shardId, shardPath, routingEpoch }) {
+  async #loadShardHistory({ ledgerDirectory, shardId, keys, routingEpoch }) {
     let previousSegmentHash = null;
     let ledgerId;
     let expectedSegmentNumber = 0;
     const formatVersion = routingEpoch === null ? 1 : 2;
+    const storagePrefix = keys[0].slice(0, keys[0].lastIndexOf("/"));
 
-    await discardProvisionalFiles(shardPath, /^segment-[0-9]{12}\.g9p\.part$/u);
-    for (const fileName of await files(shardPath)) {
-      const path = join(shardPath, fileName);
-      const verified = await verifySegment(path, {
+    for (const key of [...keys].sort()) {
+      const fileName = key.slice(key.lastIndexOf("/") + 1);
+      const verified = await verifySegmentBytes(await this.sealedStorage.read(key), {
+        source: key,
         trustedKeyIds: new Set([this.signer.keyId]),
         requireTrustedSigner: true,
         expectedPreviousSegmentHash: previousSegmentHash,
@@ -418,14 +350,14 @@ export class LocalLedger {
         }),
       });
       if (verified.formatVersion !== formatVersion) {
-        throw new G9pError("LEDGER_SEGMENT_FORMAT", `Segment ${path} uses format version ${verified.formatVersion} but its storage path requires version ${formatVersion}`);
+        throw new G9pError("LEDGER_SEGMENT_FORMAT", `Segment ${key} uses format version ${verified.formatVersion} but its storage key requires version ${formatVersion}`);
       }
       if (verified.segmentNumber !== expectedSegmentNumber) {
-        throw new G9pError("LEDGER_SEGMENT_SEQUENCE", `Expected segment ${expectedSegmentNumber} in ${shardPath} but found ${verified.segmentNumber}`);
+        throw new G9pError("LEDGER_SEGMENT_SEQUENCE", `Expected segment ${expectedSegmentNumber} in ${storagePrefix} but found ${verified.segmentNumber}`);
       }
       ledgerId ??= verified.ledgerId;
       if (verified.ledgerId !== ledgerId || ledgerDirectoryName(verified.ledgerId) !== ledgerDirectory) {
-        throw new G9pError("LEDGER_DIRECTORY", `Segment ${path} is stored under the wrong ledger directory`);
+        throw new G9pError("LEDGER_DIRECTORY", `Segment ${key} is stored under the wrong ledger storage prefix`);
       }
       const epochNumber = routingEpoch?.epochNumber ?? 0;
       const signedEpoch = routingEpoch
@@ -470,7 +402,7 @@ export class LocalLedger {
         shardId,
         epochNumber,
         formatVersion,
-        directory: shardPath,
+        directory: storagePrefix,
         nextSegmentNumber: expectedSegmentNumber,
         previousSegmentHash,
       });
@@ -510,22 +442,32 @@ export class LocalLedger {
   }
 
   async #loadRoutingEpochs() {
-    for (const ledgerDirectory of await directories(this.routingDirectory)) {
-      const ledgerPath = join(this.routingDirectory, ledgerDirectory);
-      await discardProvisionalFiles(ledgerPath, /^epoch-[0-9]{12}\.g9p\.part$/u);
-      const fileNames = await routingEpochFiles(ledgerPath);
+    const ledgers = new Map();
+    for (const key of await this.sealedStorage.list("routing/")) {
+      const match = /^routing\/([0-9a-f]{64})\/(epoch-[0-9]{12}\.g9p)$/u.exec(key);
+      if (match === null) {
+        throw new G9pError("LEDGER_ROUTING_FILE", `Unexpected sealed routing storage key ${key}`);
+      }
+      const keys = ledgers.get(match[1]) ?? [];
+      keys.push(key);
+      ledgers.set(match[1], keys);
+    }
+    for (const [ledgerDirectory, keys] of [...ledgers.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+      const sortedKeys = [...keys].sort();
       let previousEpochHash = null;
       let previousRoutingPolicy;
       let ledgerId;
       let activeEpoch;
 
-      for (let epochNumber = 0; epochNumber < fileNames.length; epochNumber += 1) {
+      for (let epochNumber = 0; epochNumber < sortedKeys.length; epochNumber += 1) {
         const expectedName = routingEpochFileName(epochNumber);
-        if (fileNames[epochNumber] !== expectedName) {
-          throw new G9pError("LEDGER_ROUTING_SEQUENCE", `Expected ${expectedName} in ${ledgerPath} but found ${fileNames[epochNumber]}`);
+        const key = sortedKeys[epochNumber];
+        const fileName = key.slice(key.lastIndexOf("/") + 1);
+        if (fileName !== expectedName) {
+          throw new G9pError("LEDGER_ROUTING_SEQUENCE", `Expected ${expectedName} in routing storage but found ${fileName}`);
         }
-        const path = join(ledgerPath, fileNames[epochNumber]);
-        const verified = await verifyRoutingEpoch(path, {
+        const verified = await verifyRoutingEpochBytes(await this.sealedStorage.read(key), {
+          source: key,
           trustedKeyIds: new Set([this.topologyAuthority.keyId]),
           requireTrustedAuthority: true,
           expectedEpochNumber: epochNumber,
@@ -534,7 +476,7 @@ export class LocalLedger {
         });
         ledgerId ??= verified.ledgerId;
         if (verified.ledgerId !== ledgerId || ledgerDirectoryName(verified.ledgerId) !== ledgerDirectory) {
-          throw new G9pError("LEDGER_ROUTING_DIRECTORY", `Routing epoch ${path} is stored under the wrong ledger directory`);
+          throw new G9pError("LEDGER_ROUTING_DIRECTORY", `Routing epoch ${key} is stored under the wrong ledger storage prefix`);
         }
         previousEpochHash = fromHex(verified.epochHash, 32);
         previousRoutingPolicy = verified.routingPolicy;
@@ -550,7 +492,7 @@ export class LocalLedger {
         );
       }
       this.routingEpochs.set(ledgerId, activeEpoch);
-      this.routingHistory.set(ledgerId, fileNames.map((_, index) => this.routingEpochDirectories.get(epochStorageKey(ledgerDirectory, index))));
+      this.routingHistory.set(ledgerId, sortedKeys.map((_, index) => this.routingEpochDirectories.get(epochStorageKey(ledgerDirectory, index))));
     }
   }
 
@@ -558,10 +500,10 @@ export class LocalLedger {
     const existing = this.routingEpochs.get(ledgerId);
     if (existing !== undefined) return existing;
 
-    const directory = join(this.routingDirectory, ledgerDirectoryName(ledgerId));
-    const outputPath = join(directory, routingEpochFileName(0));
+    const storageKey = `routing/${ledgerDirectoryName(ledgerId)}/${routingEpochFileName(0)}`;
     await writeRoutingEpoch({
-      outputPath,
+      sealedStorage: this.sealedStorage,
+      storageKey,
       ledgerId,
       epochNumber: 0,
       routingPolicy: this.defaultRoutingPolicy,
@@ -569,7 +511,8 @@ export class LocalLedger {
       reason,
       testFaultInjector: this.testFaultInjector,
     });
-    const verified = await verifyRoutingEpoch(outputPath, {
+    const verified = await verifyRoutingEpochBytes(await this.sealedStorage.read(storageKey), {
+      source: storageKey,
       trustedKeyIds: new Set([this.topologyAuthority.keyId]),
       requireTrustedAuthority: true,
       expectedLedgerId: ledgerId,
@@ -720,10 +663,10 @@ export class LocalLedger {
     };
   }
 
-  #segmentDirectory(ledgerId, epochNumber, shardId, formatVersion) {
+  #segmentPrefix(ledgerId, epochNumber, shardId, formatVersion) {
     return formatVersion === 1
-      ? join(this.segmentDirectory, ledgerDirectoryName(ledgerId), shardId)
-      : join(this.segmentDirectory, ledgerDirectoryName(ledgerId), epochDirectoryName(epochNumber), shardId);
+      ? `segments/${ledgerDirectoryName(ledgerId)}/${shardId}`
+      : `segments/${ledgerDirectoryName(ledgerId)}/${epochDirectoryName(epochNumber)}/${shardId}`;
   }
 
   #activeState(active) {
@@ -783,7 +726,7 @@ export class LocalLedger {
       shardId: item.route.shardId,
       epochNumber: routingEpoch.epochNumber,
       formatVersion,
-      directory: shardState?.directory ?? this.#segmentDirectory(item.event.ledgerId, routingEpoch.epochNumber, item.route.shardId, formatVersion),
+      directory: shardState?.directory ?? this.#segmentPrefix(item.event.ledgerId, routingEpoch.epochNumber, item.route.shardId, formatVersion),
       segmentNumber: shardState?.nextSegmentNumber ?? 0,
       previousSegmentHash: shardState?.previousSegmentHash ?? null,
       openedAt: new Date().toISOString(),
@@ -870,9 +813,10 @@ export class LocalLedger {
     if (active.blocks.length === 0) return;
     const routingEpoch = this.routingEpochs.get(active.ledgerId);
     const records = active.blocks.flatMap((block) => block.records);
-    const outputPath = join(active.directory, segmentFileName(active.segmentNumber));
+    const storageKey = `${active.directory}/${segmentFileName(active.segmentNumber)}`;
     const result = await writeSegment({
-      outputPath,
+      sealedStorage: this.sealedStorage,
+      storageKey,
       events: records.map((pending) => pending.event),
       routingPolicy: routingEpoch.routingPolicy,
       segmentNumber: active.segmentNumber,
@@ -1021,9 +965,10 @@ export class LocalLedger {
 
     const epochNumber = activeEpoch.epochNumber + 1;
     const ledgerDirectory = ledgerDirectoryName(ledgerId);
-    const outputPath = join(this.routingDirectory, ledgerDirectory, routingEpochFileName(epochNumber));
+    const storageKey = `routing/${ledgerDirectory}/${routingEpochFileName(epochNumber)}`;
     await writeRoutingEpoch({
-      outputPath,
+      sealedStorage: this.sealedStorage,
+      storageKey,
       ledgerId,
       epochNumber,
       routingPolicy,
@@ -1034,7 +979,8 @@ export class LocalLedger {
       previousRoutingPolicy: activeEpoch.routingPolicy,
       testFaultInjector: this.testFaultInjector,
     });
-    const verified = await verifyRoutingEpoch(outputPath, {
+    const verified = await verifyRoutingEpochBytes(await this.sealedStorage.read(storageKey), {
+      source: storageKey,
       trustedKeyIds: new Set([this.topologyAuthority.keyId]),
       requireTrustedAuthority: true,
       expectedLedgerId: ledgerId,

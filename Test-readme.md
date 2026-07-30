@@ -148,6 +148,8 @@ The current suite covers:
 - Signature mutation detection
 - Truncation detection
 - Prevention of sealed-path overwrite
+- Sealed-storage contract validation, create-only publication, bounded reads, provisional cleanup and non-filesystem restart reconstruction
+- Storage-neutral segment and routing-epoch verification from independently retrieved bytes
 - Signed routing-epoch creation, chaining, trust and hostile-input rejection
 - Ledger routing-history creation, descriptor-bound segments, legacy migration, restart, mismatch and tamper handling
 - Durable accepted-event retention, idempotency, provisional promotion, corruption rejection and restart sealing
@@ -183,6 +185,8 @@ The ledger service exposes narrowly named `testFaultInjector` hooks only through
 The sealing matrix inspects the interrupted filesystem state before restart, including whether the final and provisional names exist. Where hard-link promotion has occurred, it confirms that both names contain identical bytes and identify the same inode. Every case then restarts from that state and checks that the event is retained or sealed exactly once, durable intake is reconciled and no segment provisional file remains. Active-state injection covers file synchronisation, promotion and directory synchronisation for completed compressed provisional blocks. Transition tests cover both sides of the publication boundary: before publication the old epoch remains authoritative; after publication restart must activate the signed new epoch.
 
 See `docs/G9P-sealing-crash-safety-v1.md` for the full boundary matrix, recovery invariants and assurance limits. Deterministic injection does not replace deployment-specific abrupt-process, filesystem, power-loss or hardware fault testing.
+
+The sealed-storage suite exercises the bundled local adapter and an injected non-filesystem implementation. It proves that final history is discovered by opaque key, verified from exact bytes, rebuilt after service restart and replayed idempotently without granting the adapter cryptographic authority. See `docs/G9P-sealed-storage-v1.md` for the adapter guarantees and deployment limits.
 
 The repository should eventually provide additional stable commands for:
 

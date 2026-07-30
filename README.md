@@ -15,6 +15,7 @@ The current first iteration can:
 - Batch accepted-first ingestion across bounded active blocks and segments
 - Recover completed provisional blocks and seal segments by byte, record, or age limits
 - Apply bounded intake and active-memory back-pressure before accepting excess work
+- Publish immutable history through an injectable sealed-storage contract while retaining independent byte verification
 - Execute signed forward-only routing transitions across crash-safe barriers
 - Verify segments offline and distinguish an embedded key from a trusted key
 - Detect block mutation, signature mutation, truncation and incorrect chain links
@@ -76,6 +77,7 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-ingestion-receipts-v2.md`](./docs/G9P-ingestion-receipts-v2.md) — stable accepted-first ingestion and receipt-polling contract
 - [`docs/G9P-lifecycle-sizing-v1.md`](./docs/G9P-lifecycle-sizing-v1.md) — measured block, segment and age defaults
 - [`docs/G9P-sealing-crash-safety-v1.md`](./docs/G9P-sealing-crash-safety-v1.md) — sealing-boundary state and recovery demonstration
+- [`docs/G9P-sealed-storage-v1.md`](./docs/G9P-sealed-storage-v1.md) — immutable sealed-object storage contract and local adapter
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open-source licence has not yet been selected or granted. Apache 2.0 is the current adoption-first preference, subject to formal approval.

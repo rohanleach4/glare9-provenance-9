@@ -158,7 +158,14 @@ export async function verifySegment(path, options = {}) {
   const fileStat = await stat(path);
   invariant(fileStat.isFile(), "VERIFY_FILE", "Segment path is not a file");
   invariant(fileStat.size <= limits.maxFileBytes, "VERIFY_FILE_LIMIT", `Segment exceeds the ${limits.maxFileBytes} byte file limit`);
-  const fileBytes = await readFile(path);
+  return verifySegmentBytes(await readFile(path), { ...options, source: path });
+}
+
+export async function verifySegmentBytes(bytes, options = {}) {
+  const limits = { ...DEFAULT_LIMITS, ...options.limits };
+  invariant(bytes instanceof Uint8Array, "VERIFY_FILE", "Segment content must be bytes");
+  invariant(bytes.byteLength <= limits.maxFileBytes, "VERIFY_FILE_LIMIT", `Segment exceeds the ${limits.maxFileBytes} byte file limit`);
+  const fileBytes = Buffer.from(bytes);
 
   const profile = fileBytes.subarray(0, G9P_MAGIC.length).equals(G9P_MAGIC)
     ? {
@@ -319,7 +326,7 @@ export async function verifySegment(path, options = {}) {
   const segmentHash = domainHash(profile.fileHashDomain, fileBytes);
   return {
     valid: true,
-    path,
+    path: options.source ?? null,
     formatVersion: profile.formatVersion,
     ledgerId: header.ledgerId,
     shardId: header.shardId,

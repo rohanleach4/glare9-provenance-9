@@ -13,6 +13,7 @@ import { encodeFrame, FRAME_TYPES, G9P_MAGIC, G9P_MAGIC_V2 } from "./format/fram
 import { frameRecord } from "./format/records.js";
 import { merkleRoot } from "./merkle.js";
 import { writeExclusiveAndPromote } from "./sealed-file.js";
+import { requireSealedStorage } from "./sealed-storage.js";
 import { routeEvent } from "./sharding.js";
 
 const DEFAULT_BLOCK_TARGET = 1 * 1024 * 1024;
@@ -66,6 +67,8 @@ function partitionRecords(records, targetBytes, maxRecords, blockRecordCounts) {
 
 export async function writeSegment({
   outputPath,
+  sealedStorage,
+  storageKey,
   events,
   routingPolicy,
   segmentNumber,
@@ -226,16 +229,26 @@ export async function writeSegment({
     encodeFrame(FRAME_TYPES.end),
   ]);
 
-  await writeExclusiveAndPromote(outputPath, fileBytes, {
-    errorCode: "SEGMENT_WRITE",
-    extensionErrorCode: "SEGMENT_EXTENSION",
-    description: "sealed segment",
-    testFaultInjector,
-  });
+  if (sealedStorage === undefined) {
+    await writeExclusiveAndPromote(outputPath, fileBytes, {
+      errorCode: "SEGMENT_WRITE",
+      extensionErrorCode: "SEGMENT_EXTENSION",
+      description: "sealed segment",
+      testFaultInjector,
+    });
+  } else {
+    invariant(typeof storageKey === "string" && storageKey.length > 0, "SEGMENT_STORAGE_KEY", "A sealed storage key is required");
+    await requireSealedStorage(sealedStorage).publish(storageKey, fileBytes, {
+      errorCode: "SEGMENT_WRITE",
+      extensionErrorCode: "SEGMENT_EXTENSION",
+      description: "sealed segment",
+      testFaultInjector,
+    });
+  }
   const segmentHash = domainHash(profile.fileHashDomain, fileBytes);
 
   return {
-    outputPath,
+    outputPath: storageKey ?? outputPath,
     formatVersion,
     ledgerId,
     shardId,

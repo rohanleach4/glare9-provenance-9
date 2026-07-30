@@ -103,6 +103,8 @@ segments/<ledger-directory>/epoch-000000000000/shard-0000/segment-000000000000.g
 
 Twelve-digit epoch, shard and segment names are storage conventions, not cryptographic identity. Readers derive authority from verified file contents and routing descriptors.
 
+The reference service may access those names through the storage-neutral contract in `G9P-sealed-storage-v1.md`. The adapter does not change version 2 bytes or become a cryptographic trust root.
+
 Verified legacy version 1 histories remain in their original epoch-zero paths and continue as version 1 streams after explicit routing-history adoption. A later signed epoch uses the epoch-scoped version 2 layout; formats cannot be mixed within one epoch.
 
 ## Transition boundary
