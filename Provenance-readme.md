@@ -221,7 +221,7 @@ The current JavaScript implementation includes:
 - A separately deployable MySQL transactional-outbox worker
 - Leased delivery, retry, dead-lettering and sealed-receipt persistence
 
-The current implementation deliberately does not yet include production key management, receipt notifications, checkpoint services, witness nodes, CDC reconciliation or database projections. HTTP contract version 2 provides stable accepted-first lifecycle receipts and authenticated polling, while version 1 remains synchronously sealed for compatibility. Routing transitions use a separate local administration credential and topology-authority key, neither of which is a production authorization system. The local service stores generated development keys under its ignored data directory; this is not a production key manager.
+The current implementation deliberately does not yet include production key management, receipt notifications, CDC reconciliation or customer projections. It does include create-only chained checkpoint publication, a separately deployable one-shot reference witness and distinct-key threshold verification. Version 1 witness receipts attest checkpoint-container and publisher-trust verification, not an independent traversal of all referenced segment history. HTTP contract version 2 provides stable accepted-first lifecycle receipts and authenticated polling, while version 1 remains synchronously sealed for compatibility. Routing transitions and checkpoint publication use a separate local administration credential and distinct development authority keys; these are not a production authorization or key-management system.
 
 ## Connecting a service
 
@@ -232,7 +232,7 @@ The preferred connection methods are:
 3. Add change-data capture for legacy integration and reconciliation.
 4. Use webhooks or signed batch manifests where direct integration is unavailable.
 
-The version 1 ingestion endpoint seals synchronously and returns a sealed receipt. Version 2 durably accepts without forcing a seal and returns `accepted`, `provisional`, or `sealed`. Clients poll the authenticated receipt endpoint using both event ID and expected record hash. Durable acceptance transfers custody to the ledger; witnessed receipts and push notifications remain future work.
+The version 1 ingestion endpoint seals synchronously and returns a sealed receipt. Version 2 durably accepts without forcing a seal and returns `accepted`, `provisional`, or `sealed`. Clients poll the authenticated receipt endpoint using both event ID and expected record hash. Durable acceptance transfers custody to the ledger. Checkpoint witness receipts are independent `.g9p` evidence and are not yet projected into per-event polling receipts; push notifications remain future work.
 
 ## Hosting models
 

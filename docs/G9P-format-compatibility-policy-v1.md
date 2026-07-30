@@ -12,7 +12,7 @@ The following numbers are independent compatibility axes:
 - segment format version: authenticated by `HEAD`/`HED2` and `MNF1`/`MNF2`;
 - routing protocol version: authenticated inside `RTE1`;
 - event envelope version: authenticated in each canonical event;
-- routing, compression, authorization and future checkpoint policy identifiers.
+- routing, compression, authorization, checkpoint and witness policy identifiers.
 
 A reader must validate every applicable axis. It must not infer support for an unknown inner version from a recognized container byte.
 
@@ -23,9 +23,11 @@ A reader must validate every applicable axis. It must not infer support for an u
 | legacy segment | container 1, `HEAD`/`MNF1`, segment format 1 | retained verification support; sealed bytes never rewritten |
 | epoch-aware segment | container 2, `HED2`/`MNF2`, segment format 2 | retained verification support once approved stable |
 | routing epoch | container 2, `RTE1`, routing protocol 1 | retained verification support once approved stable |
+| checkpoint | container 2, `CHK1`, checkpoint protocol 1 | experimental; retained verification support once approved stable |
+| witness receipt | container 2, `WIT1`, witness protocol 1 | experimental; retained verification support once approved stable |
 | event | envelope version 1 | unknown future versions rejected before sealing |
 
-Container version 2 is a profile namespace, not a single object grammar. The first frame selects `HED2` or `RTE1`; any other profile fails closed.
+Container version 2 is a profile namespace, not a single object grammar. The first frame selects `HED2`, `RTE1`, `CHK1` or `WIT1`; any other profile fails closed.
 
 ## Compatibility rules
 

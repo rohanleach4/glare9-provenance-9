@@ -1,20 +1,22 @@
 import { readFile } from "node:fs/promises";
 
 import { loadLedgerConfig } from "./config.js";
-import { loadOrCreateLocalSigner, loadOrCreateLocalTopologyAuthority } from "./key-store.js";
+import { loadOrCreateLocalCheckpointPublisher, loadOrCreateLocalSigner, loadOrCreateLocalTopologyAuthority } from "./key-store.js";
 import { LocalLedger } from "./local-ledger.js";
 import { createLedgerServer } from "./server.js";
 
 async function main() {
   const config = loadLedgerConfig();
-  const [signer, topologyAuthority] = await Promise.all([
+  const [signer, topologyAuthority, checkpointPublisher] = await Promise.all([
     loadOrCreateLocalSigner(config.dataDirectory),
     loadOrCreateLocalTopologyAuthority(config.dataDirectory),
+    loadOrCreateLocalCheckpointPublisher(config.dataDirectory),
   ]);
   const ledger = await new LocalLedger({
     dataDirectory: config.dataDirectory,
     signer,
     topologyAuthority,
+    checkpointPublisher,
     shardCount: config.shardCount,
     adoptLegacyRoutingHistory: config.adoptLegacyRoutingHistory,
     lifecycle: config.lifecycle,
@@ -43,6 +45,7 @@ async function main() {
     port: address.port,
     signerKeyId: signer.keyId,
     topologyAuthorityKeyId: topologyAuthority.keyId,
+    checkpointPublisherKeyId: checkpointPublisher.keyId,
   }));
 
   const stop = async (signal) => {

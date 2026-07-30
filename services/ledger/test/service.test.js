@@ -13,6 +13,7 @@ import {
   routeEvent,
   toHex,
   verifyRoutingEpoch,
+  verifyCheckpoint,
   verifySegment,
   writeSegment,
 } from "@glare9/provenance";
@@ -101,7 +102,8 @@ async function fixture(run, { shardCount = 1, lifecycle } = {}) {
   const directory = await mkdtemp(join(tmpdir(), "g9p-ledger-service-"));
   const signer = generateSigner();
   const topologyAuthority = generateSigner();
-  const ledger = await new LocalLedger({ dataDirectory: directory, signer, topologyAuthority, shardCount, lifecycle }).initialize();
+  const checkpointPublisher = generateSigner();
+  const ledger = await new LocalLedger({ dataDirectory: directory, signer, topologyAuthority, checkpointPublisher, shardCount, lifecycle }).initialize();
   const service = createLedgerServer({
     ledger,
     apiToken: "test-ledger-token",
@@ -113,7 +115,7 @@ async function fixture(run, { shardCount = 1, lifecycle } = {}) {
     token: "test-ledger-token",
   });
   try {
-    return await run({ directory, signer, topologyAuthority, ledger, service, client });
+    return await run({ directory, signer, topologyAuthority, checkpointPublisher, ledger, service, client });
   } finally {
     await service.close();
     await ledger.close({ seal: false });
@@ -503,6 +505,45 @@ test("routing transition endpoint requires the separate administration token", a
     const payload = await allowed.json();
     assert.equal(payload.transition.epochNumber, 1);
     assert.equal(payload.transition.routingPolicy.shardCount, 2);
+  });
+});
+
+test("checkpoint administration seals current shard heads under a separate publisher role", async () => {
+  await fixture(async ({ directory, client, service, checkpointPublisher }) => {
+    await client.submitBatch([event({ eventId: "checkpoint-event" })]);
+    const address = service.server.address();
+    const response = await fetch(`http://127.0.0.1:${address.port}/v1/admin/checkpoints`, {
+      method: "POST",
+      headers: { authorization: "Bearer test-ledger-admin-token", "content-type": "application/json" },
+      body: JSON.stringify({ contractVersion: 1, ledgerId: "connector-test-ledger" }),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.checkpoint.checkpointNumber, 0);
+    const ledgerDirectory = toHex(domainHash("ledger-directory-v1", Buffer.from("connector-test-ledger")));
+    const verified = await verifyCheckpoint(join(directory, "checkpoints", ledgerDirectory, "checkpoint-000000000000.g9p"), {
+      trustedKeyIds: [checkpointPublisher.keyId],
+      requireTrustedSigner: true,
+    });
+    assert.equal(verified.shardHeads[0].segmentNumber, 0);
+  });
+});
+
+test("startup rejects a corrupted checkpoint chain", async () => {
+  await fixture(async ({ directory, client, ledger, signer, topologyAuthority, checkpointPublisher }) => {
+    await client.submitBatch([event({ eventId: "checkpoint-restart-event" })]);
+    await ledger.publishCheckpoint({ ledgerId: "connector-test-ledger" });
+    await ledger.close({ seal: false });
+    const ledgerDirectory = toHex(domainHash("ledger-directory-v1", Buffer.from("connector-test-ledger")));
+    const path = join(directory, "checkpoints", ledgerDirectory, "checkpoint-000000000000.g9p");
+    const bytes = await readFile(path);
+    const marker = bytes.indexOf(Buffer.from("SIG1"));
+    bytes[marker + 8 + bytes.readUInt32BE(marker + 4) - 1] ^= 1;
+    await writeFile(path, bytes);
+    await assert.rejects(
+      new LocalLedger({ dataDirectory: directory, signer, topologyAuthority, checkpointPublisher }).initialize(),
+      (error) => error.code === "CHECKPOINT_SIGNATURE",
+    );
   });
 });
 

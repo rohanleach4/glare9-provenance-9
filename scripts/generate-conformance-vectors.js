@@ -7,10 +7,14 @@ import { fileURLToPath } from "node:url";
 import {
   createRoutingPolicy,
   generateSigner,
+  verifyCheckpoint,
   verifyRoutingEpoch,
   verifySegment,
+  verifyWitnessReceipt,
+  writeCheckpoint,
   writeRoutingEpoch,
   writeSegment,
+  writeWitnessReceipt,
 } from "../src/index.js";
 
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -36,6 +40,8 @@ try {
   const v1Path = join(directory, "segment-v1.g9p");
   const v2Path = join(directory, "segment-v2.g9p");
   const epochPath = join(directory, "epoch-v1.g9p");
+  const checkpointPath = join(directory, "checkpoint-v1.g9p");
+  const witnessPath = join(directory, "witness-v1.g9p");
   const routingPolicy = createRoutingPolicy(1);
 
   await writeSegment({
@@ -56,7 +62,7 @@ try {
     createdAt,
   });
   const epoch = await verifyRoutingEpoch(epochPath);
-  await writeSegment({
+  const v2Segment = await writeSegment({
     outputPath: v2Path,
     events: [event],
     routingPolicy,
@@ -65,12 +71,33 @@ try {
     signer: segmentSigner,
     createdAt,
   });
+  const checkpointPublisher = generateSigner();
+  const witness = generateSigner();
+  await writeCheckpoint({
+    outputPath: checkpointPath,
+    ledgerId: event.ledgerId,
+    checkpointNumber: 0,
+    routingEpochNumber: 0,
+    routingEpochHash: Buffer.from(epoch.epochHash, "hex"),
+    shardHeads: [{ epochNumber: 0, shardId: "shard-0000", segmentNumber: 0, segmentHash: Buffer.from(v2Segment.segmentHash, "hex") }],
+    publisher: checkpointPublisher,
+    createdAt,
+  });
+  await writeWitnessReceipt({
+    outputPath: witnessPath,
+    checkpointBytes: await readFile(checkpointPath),
+    witness,
+    observedAt: createdAt,
+    trustedPublisherKeyIds: [checkpointPublisher.keyId],
+  });
 
   const valid = [];
   for (const [id, kind, path, verifier] of [
     ["valid-segment-v1", "segment", v1Path, verifySegment],
     ["valid-segment-v2", "segment", v2Path, verifySegment],
     ["valid-routing-epoch-v1", "routing-epoch", epochPath, verifyRoutingEpoch],
+    ["valid-checkpoint-v1", "checkpoint", checkpointPath, verifyCheckpoint],
+    ["valid-witness-receipt-v1", "witness-receipt", witnessPath, verifyWitnessReceipt],
   ]) {
     const bytes = await readFile(path);
     const verified = await verifier(path, { includeEvents: false });
@@ -90,7 +117,7 @@ try {
             fileHash: verified.segmentHash,
             signerKeyId: verified.signerKeyId,
           }
-        : {
+        : kind === "routing-epoch" ? {
             containerVersion: verified.containerVersion,
             protocolVersion: verified.protocolVersion,
             ledgerId: verified.ledgerId,
@@ -98,6 +125,22 @@ try {
             epochHash: verified.epochHash,
             fileHash: verified.fileHash,
             topologyAuthorityKeyId: verified.topologyAuthorityKeyId,
+          } : kind === "checkpoint" ? {
+            protocolVersion: verified.protocolVersion,
+            ledgerId: verified.ledgerId,
+            checkpointNumber: verified.checkpointNumber,
+            checkpointHash: verified.checkpointHash,
+            fileHash: verified.fileHash,
+            publisherKeyId: verified.publisherKeyId,
+          } : {
+            protocolVersion: verified.protocolVersion,
+            ledgerId: verified.ledgerId,
+            checkpointNumber: verified.checkpointNumber,
+            checkpointHash: verified.checkpointHash,
+            checkpointFileHash: verified.checkpointFileHash,
+            receiptHash: verified.receiptHash,
+            fileHash: verified.fileHash,
+            witnessKeyId: verified.witnessKeyId,
           },
     });
   }
@@ -110,6 +153,8 @@ try {
     { id: "invalid-segment-v2-trailing", source: "valid-segment-v2", mutation: { operation: "append", bytesHex: "00" }, expected: { primaryCode: "FORMAT_TRAILING", portableCategory: "FORMAT" } },
     { id: "invalid-routing-epoch-signature", source: "valid-routing-epoch-v1", mutation: { operation: "xor-frame-payload-last", frameType: "SIG1", value: 1 }, expected: { primaryCode: "EPOCH_SIGNATURE", portableCategory: "SIGNATURE" } },
     { id: "invalid-routing-epoch-trailing", source: "valid-routing-epoch-v1", mutation: { operation: "append", bytesHex: "00" }, expected: { primaryCode: "FORMAT_TRAILING", portableCategory: "FORMAT" } },
+    { id: "invalid-checkpoint-signature", source: "valid-checkpoint-v1", mutation: { operation: "xor-frame-payload-last", frameType: "SIG1", value: 1 }, expected: { primaryCode: "CHECKPOINT_SIGNATURE", portableCategory: "SIGNATURE" } },
+    { id: "invalid-witness-signature", source: "valid-witness-receipt-v1", mutation: { operation: "xor-frame-payload-last", frameType: "SIG1", value: 1 }, expected: { primaryCode: "WITNESS_SIGNATURE", portableCategory: "SIGNATURE" } },
   ];
 
   await writeFile(outputPath, `${JSON.stringify({

@@ -33,6 +33,7 @@ POST /v1/events:batch
 POST /v2/events:batch
 GET  /v2/receipts/<event-id>?recordHash=<expected-record-hash>
 POST /v1/admin/routing-transitions
+POST /v1/admin/checkpoints
 ```
 
 `/v1/info`, `/metrics` and ingestion require the configured bearer token. `/health` is process liveness; `/ready` fails after a recorded background ledger error. Metrics are aggregate Prometheus text without customer-controlled labels. Event submissions are idempotent by `eventId` and canonical event content. See [`docs/G9P-observability-v1.md`](../../docs/G9P-observability-v1.md).
@@ -125,12 +126,19 @@ Abandoned segment and routing `.g9p.part` files are explicitly provisional and a
 
 The automated fault-injection suite interrupts intake append, compression, file and directory synchronisation, promotion, acknowledgement and both sides of routing-epoch publication. It then rebuilds the ledger from disk and checks exact event and epoch uniqueness.
 
+## Checkpoint publication
+
+Checkpoint administration uses the same separately configured administration credential but a distinct development checkpoint-publisher key. `POST /v1/admin/checkpoints` accepts exact fields `contractVersion` and `ledgerId`, drains and seals retained events, records the current head or explicit emptiness of every shard in the active routing epoch, links the previous checkpoint and publishes a create-only `.g9p` checkpoint. Checkpoints are stored under `checkpoints/<ledger-directory>/checkpoint-<number>.g9p` and are independently verifiable with `npm run verify:checkpoint`.
+
+The separately deployable reference witness is documented in [`services/witness/README.md`](../witness/README.md). Witness receipts remain separate evidence and do not change an event's ingestion receipt state.
+
 ## Current limitations
 
-- Contract version 1 waits for sealing. Version 2 uses polling and does not yet provide push notifications or witnessed finality.
+- Contract version 1 waits for sealing. Version 2 uses polling and does not yet provide push notifications or project witnessed finality into per-event receipts.
 - Local filesystem storage is the only bundled implementation; other adapters require deployment-specific durability and security qualification.
 - The local signing key is not backed by a KMS or HSM.
 - The local topology-authority key is not backed by a KMS, HSM or customer approval policy.
+- The local checkpoint-publisher key is not backed by a KMS, HSM or customer approval policy.
 - Existing history is expected to use the current local signer.
 - Transition administration currently uses one local topology-authority key and one bearer credential; threshold/customer authorization is not implemented.
-- Checkpoints and witnesses are not implemented.
+- Version 1 witness receipts verify checkpoint signatures and configured publisher trust; they do not assert a full independent traversal of referenced segment history.

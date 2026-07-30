@@ -113,6 +113,24 @@ export function createLedgerServer({ ledger, apiToken, apiTokens = [apiToken], a
         return;
       }
 
+      if (request.method === "POST" && url.pathname === "/v1/admin/checkpoints") {
+        if (adminTokens.length === 0) {
+          sendJson(response, 404, { code: "NOT_FOUND", message: "Route not found", retryable: false, requestId });
+          return;
+        }
+        if (!tokenMatches(request.headers.authorization, adminTokens)) {
+          sendJson(response, 401, { code: "UNAUTHORISED", message: "A valid administration token is required", retryable: false, requestId });
+          return;
+        }
+        const body = await readJson(request, maxRequestBytes);
+        if (!hasExactFields(body, ["contractVersion", "ledgerId"]) || body.contractVersion !== 1 || typeof body.ledgerId !== "string") {
+          throw new G9pError("INVALID_CHECKPOINT", "Request must contain contractVersion 1 and ledgerId");
+        }
+        const checkpoint = await ledger.publishCheckpoint({ ledgerId: body.ledgerId });
+        sendJson(response, 200, { contractVersion: 1, checkpoint, requestId });
+        return;
+      }
+
       if (!tokenMatches(request.headers.authorization, apiTokens)) {
         sendJson(response, 401, { code: "UNAUTHORISED", message: "A valid bearer token is required", retryable: false, requestId });
         return;

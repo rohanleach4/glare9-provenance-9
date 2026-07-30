@@ -65,3 +65,7 @@ export function loadOrCreateLocalSigner(dataDirectory) {
 export function loadOrCreateLocalTopologyAuthority(dataDirectory) {
   return loadOrCreateNamedSigner(dataDirectory, "topology-authority-key");
 }
+
+export function loadOrCreateLocalCheckpointPublisher(dataDirectory) {
+  return loadOrCreateNamedSigner(dataDirectory, "checkpoint-publisher-key");
+}

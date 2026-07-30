@@ -8,8 +8,10 @@ import {
   createRoutingPolicy,
   generateSigner,
   planShardAssignments,
+  verifyCheckpoint,
   verifyRoutingEpoch,
   verifySegment,
+  verifyWitnessReceipt,
   writeSegment,
 } from "../index.js";
 
@@ -20,12 +22,16 @@ Usage:
   npm run demo -- [output-directory]
   npm run verify -- <segment.g9p> [trusted-key-id]
   npm run verify:epoch -- <routing-epoch.g9p> [trusted-key-id]
+  npm run verify:checkpoint -- <checkpoint.g9p> [trusted-publisher-key-id]
+  npm run verify:witness -- <witness-receipt.g9p> [trusted-witness-key-id]
   npm run shard -- <ledger-id> <shard-count> <subject> [subject ...]
 
 Commands:
   demo    Create and verify a demonstration .g9p segment
   verify  Independently verify a sealed .g9p segment
   verify-epoch  Independently verify a signed routing epoch
+  verify-checkpoint  Independently verify a signed checkpoint
+  verify-witness  Independently verify a signed witness receipt
   shard   Preview deterministic subject-to-shard assignments
 `);
 }
@@ -153,6 +159,22 @@ async function verifyEpoch(pathArgument, trustedKeyId) {
   console.log(JSON.stringify(result, null, 2));
 }
 
+async function verifyAttestation(pathArgument, trustedKeyId, verifier) {
+  if (pathArgument === undefined) {
+    usage();
+    process.exitCode = 2;
+    return;
+  }
+
+  const options = {};
+  if (trustedKeyId !== undefined) {
+    options.trustedKeyIds = new Set([trustedKeyId]);
+    options.requireTrustedSigner = true;
+  }
+  const result = await verifier(resolve(pathArgument), options);
+  console.log(JSON.stringify(result, null, 2));
+}
+
 function shard(ledgerId, shardCountArgument, subjects) {
   const shardCount = Number(shardCountArgument);
   const result = planShardAssignments({ ledgerId, shardCount, subjects });
@@ -164,6 +186,8 @@ async function main() {
   if (command === "demo") return demo(args[0]);
   if (command === "verify") return verify(args[0], args[1]);
   if (command === "verify-epoch") return verifyEpoch(args[0], args[1]);
+  if (command === "verify-checkpoint") return verifyAttestation(args[0], args[1], verifyCheckpoint);
+  if (command === "verify-witness") return verifyAttestation(args[0], args[1], verifyWitnessReceipt);
   if (command === "shard") return shard(args[0], args[1], args.slice(2));
   usage();
   if (command !== undefined) process.exitCode = 2;

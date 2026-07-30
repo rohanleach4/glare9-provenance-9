@@ -71,7 +71,7 @@ export class LocalFilesystemSealedStorage {
 
   async initialize() {
     await mkdir(this.rootDirectory, { recursive: true });
-    for (const namespace of ["segments", "routing"]) {
+    for (const namespace of ["segments", "routing", "checkpoints", "witnesses"]) {
       const namespacePath = join(this.rootDirectory, namespace);
       await mkdir(namespacePath, { recursive: true });
       const files = await walkFiles(namespacePath);

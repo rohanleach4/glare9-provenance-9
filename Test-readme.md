@@ -52,6 +52,7 @@ Treat readers, decompressors, decoders, indexes and proof parsers as hostile-inp
 - Previous-segment mismatch
 - Checkpoint missing a required shard
 - Insufficient witness threshold
+- Checkpoint and witness signature mutation, publisher/witness trust and duplicate-witness threshold handling
 - Valid logical records in a physically altered container
 
 ### Connector contract tests
@@ -118,6 +119,8 @@ npm run test:all
 ```
 
 This runs the core, shared connector contract, ledger service and MySQL worker suites. Ledger HTTP tests open an ephemeral localhost port.
+
+Checkpoint conformance covers valid `CHK1` and `WIT1` containers plus precise signature mutations in both the primary and independently implemented verifier. Ledger service coverage exercises separately authenticated checkpoint publication after forced sealing, and core tests exercise two independently generated witness keys satisfying a threshold while duplicate receipts count only once.
 
 Frozen valid and precisely invalid G9P objects are checked by both the production verifier and the separately implemented verifier:
 

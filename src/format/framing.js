@@ -12,6 +12,8 @@ export const FRAME_TYPES = Object.freeze({
   manifest: "MNF1",
   manifestV2: "MNF2",
   routingEpoch: "RTE1",
+  checkpoint: "CHK1",
+  witness: "WIT1",
   signature: "SIG1",
   end: "END!",
 });

@@ -2,13 +2,13 @@
 
 ## Purpose
 
-The repository publishes frozen, language-neutral vectors in `conformance/g9p-v1-v2-vectors.json`. The manifest contains three valid signed objects—a version 1 segment, version 2 segment and routing epoch—and seven declarative invalid mutations covering future versions, truncation, trailing bytes, physical block commitment and signatures.
+The repository publishes frozen, language-neutral vectors in `conformance/g9p-v1-v2-vectors.json`. The manifest contains five valid signed objects—a version 1 segment, version 2 segment, routing epoch, checkpoint and witness receipt—and nine declarative invalid mutations covering future versions, truncation, trailing bytes, physical block commitment and signatures.
 
 Each valid entry records ordinary SHA-256 for transport checking plus the protocol file hash, logical root, identity and counts expected from verification. Each invalid entry identifies a valid source, a literal mutation, the precise reference-verifier error code and a portable assurance category.
 
 ## Independent implementation boundary
 
-`tools/independent-verifier/verify.js` is a second offline verifier implemented without importing production code from `src/`. It independently implements frame parsing, canonical decoding/re-encoding, domain hashing, Ed25519 identity/signature checks, Zstandard decompression, record framing, routing, block commitments and Merkle reconstruction.
+`tools/independent-verifier/verify.js` is a second offline verifier implemented without importing production code from `src/`. It independently implements frame parsing, canonical decoding/re-encoding, domain hashing, Ed25519 identity/signature checks, Zstandard decompression, record framing, routing, block commitments, Merkle reconstruction and checkpoint/witness commitments.
 
 It intentionally uses the same Node.js standard cryptographic and Zstandard primitives as the primary implementation. It is implementation-independent, not an externally authored or cross-runtime cryptographic review. The JSON vectors are language-neutral so another implementation can consume them without JavaScript.
 

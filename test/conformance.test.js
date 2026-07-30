@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { verifyRoutingEpochBytes, verifySegmentBytes } from "../src/index.js";
+import { verifyCheckpointBytes, verifyRoutingEpochBytes, verifySegmentBytes, verifyWitnessReceiptBytes } from "../src/index.js";
 import { verifyG9pBytes } from "../tools/independent-verifier/verify.js";
 
 const manifest = JSON.parse(await readFile(new URL("../conformance/g9p-v1-v2-vectors.json", import.meta.url), "utf8"));
@@ -28,9 +28,10 @@ function mutate(source, mutation) {
 }
 
 function primaryVerify(vector, bytes) {
-  return vector.kind === "segment"
-    ? verifySegmentBytes(bytes, { includeEvents: false })
-    : verifyRoutingEpochBytes(bytes);
+  if (vector.kind === "segment") return verifySegmentBytes(bytes, { includeEvents: false });
+  if (vector.kind === "routing-epoch") return verifyRoutingEpochBytes(bytes);
+  if (vector.kind === "checkpoint") return verifyCheckpointBytes(bytes);
+  return verifyWitnessReceiptBytes(bytes);
 }
 
 test("frozen valid vectors agree across the primary and independent verifiers", async () => {

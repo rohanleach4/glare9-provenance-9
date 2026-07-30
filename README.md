@@ -14,6 +14,7 @@ The current first iteration can:
 - Retain accepted events durably before assigning their routing epoch and shard
 - Batch accepted-first ingestion across bounded active blocks and segments
 - Recover completed provisional blocks and seal segments by byte, record, or age limits
+- Publish chained global shard-head checkpoints and independently signed threshold witness receipts
 - Apply bounded intake and active-memory back-pressure before accepting excess work
 - Publish immutable history through an injectable sealed-storage contract while retaining independent byte verification
 - Execute signed forward-only routing transitions across crash-safe barriers
@@ -101,7 +102,8 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-licence-governance-candidate-v1.md`](./docs/G9P-licence-governance-candidate-v1.md) — non-granting licence and governance candidate
 - [`docs/G9P-key-identity-protocol-v1.md`](./docs/G9P-key-identity-protocol-v1.md) — key lifecycle and customer-controlled signing candidate
 - [`docs/G9P-transport-identity-v1.md`](./docs/G9P-transport-identity-v1.md) — TLS, mutual TLS and credential rotation profile
-- [`docs/G9P-checkpoint-witness-v1.md`](./docs/G9P-checkpoint-witness-v1.md) — checkpoint, witness and threshold policy candidate
+- [`docs/G9P-checkpoint-witness-v1.md`](./docs/G9P-checkpoint-witness-v1.md) — implemented experimental checkpoint, witness and threshold policy
+- [`services/witness/README.md`](./services/witness/README.md) — separately operated reference witness
 - [`docs/G9P-mysql-qualification-v1.md`](./docs/G9P-mysql-qualification-v1.md) — Workbench-managed integration and TLS/grant qualification
 - [`docs/G9P-deployment-operations-v1.md`](./docs/G9P-deployment-operations-v1.md) — supported topology, capacity and availability profile
 - [`docs/G9P-observability-v1.md`](./docs/G9P-observability-v1.md) — health, readiness, metrics and alerting

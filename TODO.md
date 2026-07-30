@@ -23,7 +23,7 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Add the sealed-storage contract and local filesystem adapter with create-only publication, bounded reads, opaque-key history reconstruction and storage-neutral byte verification.
 - [x] Test exact-byte backup, retention archive and disaster restore with independent verification and receipt reconstruction from fresh storage.
 - [x] Stabilise public accepted, provisional and sealed receipt stages with authenticated polling and accepted-first MySQL connector adoption; push notifications remain optional future work.
-- [ ] Implement checkpoint publication and independently administered witness operation.
+- [x] Implement create-only checkpoint publication, a separately deployable witness operation and distinct-witness threshold verification; full-history witness policy and production signer custody remain explicit future gates.
 - [x] Define projection and index rebuild procedures entirely from verified ledger history, with fail-closed ordering and reconciliation rules.
 
 ## Keys, identity and security

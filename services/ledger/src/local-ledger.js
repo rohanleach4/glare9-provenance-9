@@ -15,8 +15,10 @@ import {
   toHex,
   validateEvent,
   verifyRoutingEpochBytes,
+  verifyCheckpointBytes,
   verifySegmentBytes,
   writeRoutingEpoch,
+  writeCheckpoint,
   writeSegment,
 } from "@glare9/provenance";
 
@@ -86,6 +88,10 @@ function routingEpochFileName(epochNumber) {
   return `epoch-${epochNumber.toString().padStart(12, "0")}.g9p`;
 }
 
+function checkpointFileName(checkpointNumber) {
+  return `checkpoint-${checkpointNumber.toString().padStart(12, "0")}.g9p`;
+}
+
 function epochDirectoryName(epochNumber) {
   return `epoch-${epochNumber.toString().padStart(12, "0")}`;
 }
@@ -109,6 +115,7 @@ export class LocalLedger {
     dataDirectory,
     signer,
     topologyAuthority,
+    checkpointPublisher = signer,
     shardCount = 1,
     adoptLegacyRoutingHistory = false,
     lifecycle,
@@ -118,11 +125,15 @@ export class LocalLedger {
     if (topologyAuthority?.algorithm !== "ed25519" || !topologyAuthority.privateKey || !(topologyAuthority.publicKeyDer instanceof Uint8Array)) {
       throw new G9pError("LEDGER_TOPOLOGY_AUTHORITY", "A local Ed25519 topology authority is required");
     }
+    if (checkpointPublisher?.algorithm !== "ed25519" || !checkpointPublisher.privateKey || !(checkpointPublisher.publicKeyDer instanceof Uint8Array)) {
+      throw new G9pError("LEDGER_CHECKPOINT_PUBLISHER", "A distinct-capable Ed25519 checkpoint publisher is required");
+    }
     this.dataDirectory = dataDirectory;
     this.intakeDirectory = join(dataDirectory, "intake");
     this.activeStateDirectory = join(dataDirectory, "provisional");
     this.signer = signer;
     this.topologyAuthority = topologyAuthority;
+    this.checkpointPublisher = checkpointPublisher;
     this.adoptLegacyRoutingHistory = adoptLegacyRoutingHistory;
     this.testFaultInjector = testFaultInjector;
     this.sealedStorage = requireSealedStorage(sealedStorage
@@ -187,6 +198,7 @@ export class LocalLedger {
       await this.#ensureGenesisRoutingEpoch(ledgerId, "Adopt existing G9P format version 1 history as routing epoch zero");
     }
     this.#verifyTransitionHeads();
+    await this.#loadCheckpoints();
     await this.#loadDurableIntake();
     await this.#loadActiveSegments();
     await this.#drainAccepted();
@@ -441,6 +453,58 @@ export class LocalLedger {
     }
   }
 
+  async #loadCheckpoints() {
+    const ledgers = new Map();
+    for (const key of await this.sealedStorage.list("checkpoints/")) {
+      const match = /^checkpoints\/([0-9a-f]{64})\/(checkpoint-[0-9]{12}\.g9p)$/u.exec(key);
+      if (match === null) throw new G9pError("LEDGER_CHECKPOINT_FILE", `Unexpected sealed checkpoint storage key ${key}`);
+      const keys = ledgers.get(match[1]) ?? [];
+      keys.push(key);
+      ledgers.set(match[1], keys);
+    }
+    for (const [ledgerDirectory, keys] of [...ledgers.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+      let previousCheckpointHash = null;
+      let ledgerId;
+      for (let checkpointNumber = 0; checkpointNumber < keys.length; checkpointNumber += 1) {
+        const key = [...keys].sort()[checkpointNumber];
+        if (key !== `checkpoints/${ledgerDirectory}/${checkpointFileName(checkpointNumber)}`) {
+          throw new G9pError("CHECKPOINT_SEQUENCE", `Checkpoint storage for ${ledgerDirectory} is not contiguous`);
+        }
+        const verified = await verifyCheckpointBytes(await this.sealedStorage.read(key), {
+          trustedKeyIds: [this.checkpointPublisher.keyId],
+          requireTrustedSigner: true,
+        });
+        ledgerId ??= verified.ledgerId;
+        if (verified.ledgerId !== ledgerId || ledgerDirectoryName(verified.ledgerId) !== ledgerDirectory
+          || verified.checkpointNumber !== checkpointNumber || verified.previousCheckpointHash !== previousCheckpointHash) {
+          throw new G9pError("CHECKPOINT_SEQUENCE", `Checkpoint ${key} does not continue its ledger checkpoint chain`);
+        }
+        const routingEpoch = this.routingEpochDirectories.get(epochStorageKey(ledgerDirectory, verified.routingEpochNumber));
+        if (routingEpoch === undefined || routingEpoch.epochHash !== verified.routingEpochHash
+          || routingEpoch.routingPolicy.shardCount !== verified.shardHeads.length) {
+          throw new G9pError("CHECKPOINT_ROUTING", `Checkpoint ${key} does not match verified routing history`);
+        }
+        for (const head of verified.shardHeads) {
+          if (head.segmentNumber === null) continue;
+          const segmentKey = `segments/${ledgerDirectory}/${epochDirectoryName(head.epochNumber)}/${head.shardId}/${segmentFileName(head.segmentNumber)}`;
+          const segment = await verifySegmentBytes(await this.sealedStorage.read(segmentKey), {
+            trustedKeyIds: new Set([this.signer.keyId]),
+            requireTrustedSigner: true,
+            expectedLedgerId: ledgerId,
+            expectedShardId: head.shardId,
+            expectedRoutingEpochNumber: head.epochNumber,
+            expectedRoutingEpochHash: fromHex(verified.routingEpochHash, 32),
+            includeEvents: false,
+          });
+          if (segment.segmentNumber !== head.segmentNumber || segment.segmentHash !== head.segmentHash) {
+            throw new G9pError("CHECKPOINT_HEAD", `Checkpoint ${key} references the wrong segment commitment for ${head.shardId}`);
+          }
+        }
+        previousCheckpointHash = verified.checkpointHash;
+      }
+    }
+  }
+
   async #loadRoutingEpochs() {
     const ledgers = new Map();
     for (const key of await this.sealedStorage.list("routing/")) {
@@ -541,6 +605,10 @@ export class LocalLedger {
 
   transitionRouting(options) {
     return this.#serialize(() => this.#transitionRouting(options));
+  }
+
+  publishCheckpoint(options) {
+    return this.#serialize(() => this.#publishCheckpoint(options));
   }
 
   ingestBatch(events) {
@@ -1001,6 +1069,38 @@ export class LocalLedger {
     return { ...verified, alreadyActive: false };
   }
 
+  async #publishCheckpoint({ ledgerId }) {
+    const activeEpoch = this.routingEpochs.get(ledgerId);
+    if (activeEpoch === undefined) throw new G9pError("CHECKPOINT_LEDGER", `Ledger ${ledgerId} has no signed routing history`);
+    await this.#drainAccepted({ forceSeal: true });
+    const ledgerDirectory = ledgerDirectoryName(ledgerId);
+    const prefix = `checkpoints/${ledgerDirectory}/`;
+    const existing = await this.sealedStorage.list(prefix);
+    let previousCheckpointHash = null;
+    for (let checkpointNumber = 0; checkpointNumber < existing.length; checkpointNumber += 1) {
+      const key = existing[checkpointNumber];
+      if (key !== `${prefix}${checkpointFileName(checkpointNumber)}`) throw new G9pError("CHECKPOINT_SEQUENCE", `Unexpected checkpoint storage key ${key}`);
+      const verified = await verifyCheckpointBytes(await this.sealedStorage.read(key), {
+        trustedKeyIds: [this.checkpointPublisher.keyId],
+        requireTrustedSigner: true,
+      });
+      if (verified.ledgerId !== ledgerId || verified.checkpointNumber !== checkpointNumber || verified.previousCheckpointHash !== (previousCheckpointHash === null ? null : toHex(previousCheckpointHash))) {
+        throw new G9pError("CHECKPOINT_SEQUENCE", `Checkpoint ${key} does not continue the ledger checkpoint chain`);
+      }
+      previousCheckpointHash = fromHex(verified.checkpointHash, 32);
+    }
+    const shardHeads = [];
+    for (let index = 0; index < activeEpoch.routingPolicy.shardCount; index += 1) {
+      const shardId = `shard-${index.toString().padStart(4, "0")}`;
+      const state = this.shardStates.get(stateKey(ledgerId, activeEpoch.epochNumber, shardId));
+      shardHeads.push({ epochNumber: activeEpoch.epochNumber, shardId, segmentNumber: state === undefined ? null : state.nextSegmentNumber - 1, segmentHash: state?.previousSegmentHash ?? null });
+    }
+    const checkpointNumber = existing.length;
+    const storageKey = `${prefix}${checkpointFileName(checkpointNumber)}`;
+    await writeCheckpoint({ sealedStorage: this.sealedStorage, storageKey, ledgerId, checkpointNumber, previousCheckpointHash, routingEpochNumber: activeEpoch.epochNumber, routingEpochHash: fromHex(activeEpoch.epochHash, 32), shardHeads, publisher: this.checkpointPublisher });
+    return verifyCheckpointBytes(await this.sealedStorage.read(storageKey), { trustedKeyIds: [this.checkpointPublisher.keyId], requireTrustedSigner: true });
+  }
+
   info() {
     return {
       formatVersion: 1,
@@ -1008,6 +1108,7 @@ export class LocalLedger {
       routingEpochProtocolVersion: 1,
       routingPolicy: this.defaultRoutingPolicy,
       topologyAuthorityKeyId: this.topologyAuthority.keyId,
+      checkpointPublisherKeyId: this.checkpointPublisher.keyId,
       knownRoutingLedgers: this.routingEpochs.size,
       signerKeyId: this.signer.keyId,
       knownEvents: this.eventIndex.size,

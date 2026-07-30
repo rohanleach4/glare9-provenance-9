@@ -478,6 +478,56 @@ function verifyEpoch(bytes) {
   };
 }
 
+function verifyAttestation(bytes, profile) {
+  const reader = new ContainerReader(bytes, MAGIC_V2);
+  const statementFrame = reader.frame(profile.frame);
+  const signatureFrame = reader.frame("SIG1");
+  requireThat(reader.frame("END!").payload.length === 0, "FORMAT", "END", "END frame is not empty");
+  reader.end();
+  const statement = decodeCanonical(statementFrame.payload);
+  const signed = decodeCanonical(signatureFrame.payload);
+  exact(statement, profile.fields, `${profile.code}_FIELDS`);
+  exact(statement[profile.identityField], ["algorithm", "keyId", "publicKey"], `${profile.code}_IDENTITY_FIELDS`);
+  exact(signed, ["algorithm", "keyId", "signature"], "SIGNATURE_FIELDS");
+  requireThat(statement.kind === profile.kind && statement.protocolVersion === 1, "SEMANTIC", `${profile.code}_VERSION`, `unsupported ${profile.kind}`);
+  text(statement.ledgerId, 1, 1024, `${profile.code}_LEDGER`);
+  integer(statement.checkpointNumber, 0, Number.MAX_SAFE_INTEGER, `${profile.code}_NUMBER`);
+  if (profile.frame === "CHK1") {
+    timestamp(statement.createdAt, "CHECKPOINT_CREATED_AT");
+    requireThat(statement.previousCheckpointHash === null || (statement.previousCheckpointHash instanceof Uint8Array && statement.previousCheckpointHash.length === 32), "SEMANTIC", "CHECKPOINT_LINK", "checkpoint link is invalid");
+    integer(statement.routingEpochNumber, 0, Number.MAX_SAFE_INTEGER, "CHECKPOINT_EPOCH");
+    requireThat(statement.routingEpochHash instanceof Uint8Array && statement.routingEpochHash.length === 32, "SEMANTIC", "CHECKPOINT_EPOCH_HASH", "checkpoint routing hash is invalid");
+    requireThat(Array.isArray(statement.shardHeads) && statement.shardHeads.length >= 1 && statement.shardHeads.length <= 65_536, "RESOURCE_LIMIT", "CHECKPOINT_HEAD_LIMIT", "checkpoint shard heads are not bounded");
+    statement.shardHeads.forEach((head, index) => {
+      exact(head, ["epochNumber", "shardId", "segmentNumber", "segmentHash"], "CHECKPOINT_HEAD_FIELDS");
+      requireThat(head.epochNumber === statement.routingEpochNumber && head.shardId === `shard-${index.toString().padStart(4, "0")}`, "SEMANTIC", "CHECKPOINT_HEAD_ORDER", "checkpoint shard heads are unordered");
+      const empty = head.segmentNumber === null && head.segmentHash === null;
+      const sealed = Number.isSafeInteger(head.segmentNumber) && head.segmentNumber >= 0 && head.segmentHash instanceof Uint8Array && head.segmentHash.length === 32;
+      requireThat(empty || sealed, "SEMANTIC", "CHECKPOINT_HEAD", "checkpoint shard head is incomplete");
+    });
+  } else {
+    requireThat(statement.checkpointHash instanceof Uint8Array && statement.checkpointHash.length === 32
+      && statement.checkpointFileHash instanceof Uint8Array && statement.checkpointFileHash.length === 32, "SEMANTIC", "WITNESS_CHECKPOINT_HASH", "witness checkpoint commitment is invalid");
+    timestamp(statement.observedAt, "WITNESS_OBSERVED_AT");
+  }
+  const identity = statement[profile.identityField];
+  requireThat(identity.algorithm === "ed25519" && typeof identity.keyId === "string" && /^[0-9a-f]{64}$/u.test(identity.keyId)
+    && identity.publicKey instanceof Uint8Array && identity.publicKey.length === 44 && signed.algorithm === "ed25519"
+    && signed.keyId === identity.keyId && signed.signature instanceof Uint8Array && signed.signature.length === 64, "IDENTITY", `${profile.code}_IDENTITY`, "attestation signer identity is invalid");
+  verifyEd25519(identity.publicKey, signed.signature, profile.signatureDomain, statementFrame.payload, identity.keyId);
+  return {
+    valid: true,
+    kind: profile.resultKind,
+    protocolVersion: 1,
+    ledgerId: statement.ledgerId,
+    checkpointNumber: statement.checkpointNumber,
+    [profile.hashName]: domainHash(profile.hashDomain, statementFrame.payload).toString("hex"),
+    fileHash: domainHash(profile.fileDomain, bytes).toString("hex"),
+    [profile.keyName]: identity.keyId,
+    ...(profile.frame === "WIT1" ? { checkpointHash: Buffer.from(statement.checkpointHash).toString("hex"), checkpointFileHash: Buffer.from(statement.checkpointFileHash).toString("hex") } : {}),
+  };
+}
+
 export function verifyG9pBytes(input) {
   requireThat(input instanceof Uint8Array && input.byteLength <= MAX_FILE, "RESOURCE_LIMIT", "FILE_LIMIT", "input is not bounded bytes");
   const bytes = Buffer.from(input);
@@ -487,6 +537,16 @@ export function verifyG9pBytes(input) {
   const profile = bytes.toString("ascii", 8, 12);
   if (profile === "HED2") return verifySegment(bytes, 2);
   if (profile === "RTE1") return verifyEpoch(bytes);
+  if (profile === "CHK1") return verifyAttestation(bytes, {
+    frame: "CHK1", code: "CHECKPOINT", kind: "g9p-checkpoint", resultKind: "checkpoint", identityField: "publisher",
+    fields: ["kind", "protocolVersion", "ledgerId", "checkpointNumber", "createdAt", "previousCheckpointHash", "routingEpochNumber", "routingEpochHash", "shardHeads", "publisher"],
+    signatureDomain: "checkpoint-signature-v1", hashDomain: "checkpoint-v1", fileDomain: "checkpoint-file-v1", hashName: "checkpointHash", keyName: "publisherKeyId",
+  });
+  if (profile === "WIT1") return verifyAttestation(bytes, {
+    frame: "WIT1", code: "WITNESS", kind: "g9p-witness-receipt", resultKind: "witness-receipt", identityField: "witness",
+    fields: ["kind", "protocolVersion", "ledgerId", "checkpointNumber", "checkpointHash", "checkpointFileHash", "observedAt", "witness"],
+    signatureDomain: "witness-signature-v1", hashDomain: "witness-receipt-v1", fileDomain: "witness-file-v1", hashName: "receiptHash", keyName: "witnessKeyId",
+  });
   reject("FORMAT", "PROFILE", `unsupported version 2 profile ${profile}`);
 }
 
