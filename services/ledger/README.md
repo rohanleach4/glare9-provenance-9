@@ -90,6 +90,8 @@ Before writing a ledger's first segment, the service creates a signed epoch-zero
 
 Immutable routing descriptors and segments are accessed through the sealed-storage contract. The bundled `LocalFilesystemSealedStorage` preserves these paths and remains the default. Embedded service deployments may inject another implementation into `LocalLedger`; it must provide create-only atomic publication, bounded exact-byte reads, deterministic final-key listing and its own incomplete-publication recovery. Durable intake, active-block state and development keys remain separate local service state. See [`docs/G9P-sealed-storage-v1.md`](../../docs/G9P-sealed-storage-v1.md).
 
+Exact-byte backup/restore is specified in [`docs/G9P-backup-recovery-v1.md`](../../docs/G9P-backup-recovery-v1.md). Startup index reconstruction and external projection replay are specified in [`docs/G9P-projection-rebuild-v1.md`](../../docs/G9P-projection-rebuild-v1.md).
+
 Legacy version 1 history without a descriptor fails closed by default. For one reviewed migration startup, set `PROVENANCE_ADOPT_LEGACY_ROUTING_HISTORY=true` to create an epoch-zero adoption descriptor after all existing segments pass verification. Disable the option again after migration. Sealed segment bytes are never changed.
 
 ## Routing transitions
