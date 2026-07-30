@@ -31,6 +31,7 @@
     "conformance:generate": "node scripts/generate-conformance-vectors.js",
     "conformance:test": "node --test test/conformance.test.js",
     "release:evidence": "node scripts/release-evidence.js",
+    "qualification:technical": "node scripts/technical-qualification.js",
     "sbom": "node scripts/generate-sbom.js",
     "scan:repository": "node scripts/security-scan.js",
     "audit:dependencies": "npm audit --omit=dev --audit-level=high",
