@@ -228,6 +228,17 @@ test("truncated segments are rejected", async () => {
   });
 });
 
+test("verifier rejects an unsupported future segment container version", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    const { path } = await createSegment(directory);
+    const futurePath = join(directory, "future-version.g9p");
+    const bytes = await readFile(path);
+    bytes[7] = 0x03;
+    await writeFile(futurePath, bytes);
+    await assert.rejects(verifySegment(futurePath), (error) => error.code === "FORMAT_MAGIC");
+  });
+});
+
 test("sealed paths are never overwritten", async () => {
   await withTemporaryDirectory(async (directory) => {
     const first = await createSegment(directory);

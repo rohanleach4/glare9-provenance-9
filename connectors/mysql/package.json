@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24.0.0 <25"
   },
   "dependencies": {
     "@glare9/provenance-connector-contract": "file:../../packages/connector-contract",

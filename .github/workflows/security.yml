@@ -1,0 +1,30 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+      - run: npm ci
+      - run: npm run scan:repository
+      - run: npm run audit:dependencies
+      - uses: github/codeql-action/analyze@v4

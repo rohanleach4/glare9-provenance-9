@@ -254,4 +254,12 @@ The licence remains to be formally selected. Apache 2.0 is the current adoption-
 - `docs/G9P-lifecycle-sizing-v1.md`: reproducible lifecycle benchmark and measured deployment defaults
 - `docs/G9P-sealing-crash-safety-v1.md`: local sealing-boundary state and recovery demonstration
 - `docs/G9P-sealed-storage-v1.md`: immutable sealed-object storage contract and local adapter
+- `docs/G9P-backup-recovery-v1.md`: exact-byte backup, retention and disaster recovery
+- `docs/G9P-projection-rebuild-v1.md`: verified-history index and projection rebuild procedure
+- `docs/G9P-signer-trust-operations-v1.md`: signer trust bootstrap, forward rotation and revocation procedure
+- `docs/G9P-resource-limit-review-v1.md`: hostile-input parser and decompression limit review
+- `docs/G9P-diagnostic-data-policy-v1.md`: diagnostic redaction policy and implementation review
+- `docs/G9P-shard-benchmark-v1.md`: representative subject-distribution measurements
+- `docs/G9P-compatibility-test-matrix-v1.md`: supported and rejected version behavior
+- `docs/G9P-development-ci-v1.md`: supported development runtime and CI policy
 - `Global-readme.md`: ignored local build instructions

@@ -59,6 +59,13 @@ test("event validation rejects unknown envelope fields", () => {
   );
 });
 
+test("event validation rejects unsupported future envelope versions", () => {
+  assert.throws(
+    () => validateEvent(event({ version: 2 })),
+    (error) => error.code === "EVENT_VERSION",
+  );
+});
+
 test("event hashes are deterministic and change with content", () => {
   const first = eventHashHex(event());
   assert.equal(first, eventHashHex(event()));

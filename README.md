@@ -78,6 +78,16 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-lifecycle-sizing-v1.md`](./docs/G9P-lifecycle-sizing-v1.md) — measured block, segment and age defaults
 - [`docs/G9P-sealing-crash-safety-v1.md`](./docs/G9P-sealing-crash-safety-v1.md) — sealing-boundary state and recovery demonstration
 - [`docs/G9P-sealed-storage-v1.md`](./docs/G9P-sealed-storage-v1.md) — immutable sealed-object storage contract and local adapter
+- [`docs/G9P-backup-recovery-v1.md`](./docs/G9P-backup-recovery-v1.md) — exact-byte backup, retention and disaster recovery
+- [`docs/G9P-projection-rebuild-v1.md`](./docs/G9P-projection-rebuild-v1.md) — verified-history index and projection rebuild procedure
+- [`docs/G9P-resource-limit-review-v1.md`](./docs/G9P-resource-limit-review-v1.md) — hostile-input resource-limit review
+- [`docs/G9P-diagnostic-data-policy-v1.md`](./docs/G9P-diagnostic-data-policy-v1.md) — diagnostic redaction policy and evidence
+- [`docs/G9P-shard-benchmark-v1.md`](./docs/G9P-shard-benchmark-v1.md) — representative shard-distribution measurements
+- [`docs/G9P-mysql-outbox-operations-v1.md`](./docs/G9P-mysql-outbox-operations-v1.md) — MySQL outbox retention, dead-letter and replay operations
+- [`docs/G9P-connector-schema-neutrality-v1.md`](./docs/G9P-connector-schema-neutrality-v1.md) — connector schema-neutrality evidence
+- [`docs/G9P-compatibility-test-matrix-v1.md`](./docs/G9P-compatibility-test-matrix-v1.md) — supported and rejected version behavior
+- [`docs/G9P-signer-trust-operations-v1.md`](./docs/G9P-signer-trust-operations-v1.md) — signer trust, rotation and revocation procedure
+- [`docs/G9P-development-ci-v1.md`](./docs/G9P-development-ci-v1.md) — supported runtime and automated CI/security checks
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open-source licence has not yet been selected or granted. Apache 2.0 is the current adoption-first preference, subject to formal approval.

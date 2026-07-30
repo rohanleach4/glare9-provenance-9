@@ -188,6 +188,17 @@ test("routing epoch truncation and trailing bytes are rejected", async () => {
   });
 });
 
+test("routing verifier rejects an unsupported future container version", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    const { path } = await writeGenesis(directory);
+    const futurePath = join(directory, "future-epoch.g9p");
+    const bytes = await readFile(path);
+    bytes[7] = 0x03;
+    await writeFile(futurePath, bytes);
+    await assert.rejects(verifyRoutingEpoch(futurePath), (error) => error.code === "FORMAT_MAGIC");
+  });
+});
+
 test("sealed routing epoch paths are never overwritten", async () => {
   await withTemporaryDirectory(async (directory) => {
     const first = await writeGenesis(directory);

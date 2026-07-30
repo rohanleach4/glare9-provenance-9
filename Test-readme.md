@@ -133,6 +133,16 @@ npm run benchmark:lifecycle
 
 It measures block and segment sweeps for compressible and high-entropy evidence, verifies every generated segment and emits JSON results. It is intentionally excluded from `test:all` because performance results are hardware-dependent.
 
+Run deterministic shard-distribution planning and repository security checks:
+
+```bash
+npm run benchmark:shards
+npm run scan:repository
+npm run audit:dependencies
+```
+
+The dependency audit queries the npm vulnerability service and therefore requires network access. GitHub Actions runs the full suite on every pull request and runs repository scanning, dependency audit and CodeQL on pull requests, `main` and a weekly schedule.
+
 The current suite covers:
 
 - Deterministic canonical map ordering and round trips
@@ -165,6 +175,11 @@ The current suite covers:
 - Connector response validation
 - MySQL configuration and safe table-name handling
 - Worker delivery, retry and invalid-envelope dead-letter behaviour
+- Exact-byte backup/archive/restore with verified-history receipt reconstruction
+- Hostile input rejection at canonical, frame, record, object and decompression ceilings
+- Diagnostic redaction for unexpected ledger and connector failures
+- Explicit future event, segment and routing-version rejection
+- Opaque customer-schema connector delivery
 
 ### Real MySQL integration
 

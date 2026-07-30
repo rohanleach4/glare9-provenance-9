@@ -21,25 +21,25 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Demonstrate crash safety at every local-filesystem sealing boundary with deterministic state inspection and exactly-once restart recovery, including file and directory synchronisation and create-only promotion; deployment-specific power-loss qualification remains operational work.
 - [x] Define recovery behavior for abandoned `.g9p.part` files and interrupted writes.
 - [x] Add the sealed-storage contract and local filesystem adapter with create-only publication, bounded reads, opaque-key history reconstruction and storage-neutral byte verification.
-- [ ] Test backup, restore, retention and disaster recovery without rewriting sealed bytes.
+- [x] Test exact-byte backup, retention archive and disaster restore with independent verification and receipt reconstruction from fresh storage.
 - [x] Stabilise public accepted, provisional and sealed receipt stages with authenticated polling and accepted-first MySQL connector adoption; push notifications remain optional future work.
 - [ ] Implement checkpoint publication and independently administered witness operation.
-- [ ] Define projection and index rebuild procedures entirely from verified ledger history.
+- [x] Define projection and index rebuild procedures entirely from verified ledger history, with fail-closed ordering and reconciliation rules.
 
 ## Keys, identity and security
 
 - [ ] Replace development signing-key files with an approved KMS, HSM or customer-controlled key integration.
-- [ ] Document signer trust bootstrap, rotation, revocation and historical verification procedures.
+- [x] Document signer trust bootstrap, forward rotation, revocation and historical verification procedures, including current implementation limits.
 - [ ] Add transport TLS and production-grade service identity and authorization controls.
 - [ ] Add bearer-token or credential rotation without ingestion downtime.
-- [ ] Review parser, length, allocation and decompression limits against denial-of-service threats.
-- [ ] Confirm that logs, metrics, traces and error responses cannot expose event payloads, credentials or signing material.
-- [ ] Complete dependency, secret, static-analysis and vulnerability scanning.
+- [x] Review and test parser, length, allocation and decompression ceilings against denial-of-service threats.
+- [x] Remove arbitrary exception text from service and connector diagnostics and test that payload and credential sentinels do not reach logs or HTTP failures.
+- [x] Add repeatable repository secret/path and syntax scanning, a zero-finding production dependency audit and scheduled CodeQL/vulnerability CI.
 - [ ] Commission an independent security and cryptographic design review before production use.
 
 ## Sharding and scale
 
-- [ ] Benchmark representative subject distributions with the shard-planning tool.
+- [x] Benchmark uniform, governance-mix and deliberately hot-subject distributions across 1–16 shards with the public shard-planning tool.
 - [x] Define operational criteria for choosing an initial shard count.
 - [x] Prevent an in-place shard-count change when a ledger has history but no recorded routing-epoch transition.
 - [x] Implement create-only signed routing-epoch descriptor writing and offline verification.
@@ -57,20 +57,20 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [ ] Test connector restart, lease expiry, database failover, back-pressure and ledger unavailability under fault injection.
 - [ ] Add reusable connector contract tests for ordering, recovery, quarantine and reconciliation.
 - [ ] Verify least-privilege grants and TLS configuration in a production-like environment.
-- [ ] Define outbox retention, dead-letter review and replay operating procedures.
-- [ ] Prove that connector upgrades remain schema-neutral and never require access to customer business tables.
+- [x] Define outbox retention, dead-letter review, byte-identical replay and ledger-reconciliation operating procedures.
+- [x] Prove the connector passes customer-defined payload schemas opaquely and depends only on the dedicated outbox contract.
 
 ## Verification and quality
 
-- [ ] Standardise development and CI on supported Node.js and npm versions.
+- [x] Standardise development and CI on Node.js 24 and npm 11 with enforced engine ranges, `.nvmrc` and lockfile installation.
 - [x] Make the aggregate test runner demonstrably fail on every child-suite failure.
-- [ ] Add automated CI checks for unit, service, connector, format and compatibility tests.
+- [x] Add GitHub Actions checks for the aggregate unit, service, connector, format and compatibility suites without Docker-based MySQL.
 - [ ] Set reviewed coverage expectations for security- and protocol-critical code.
 - [ ] Add property-based tests for codecs, routing, idempotency and segment invariants.
 - [ ] Fuzz canonical decoding, frame parsing, decompression and imported evidence.
 - [x] Add fault-injection tests for append, compression, sync, promotion, acknowledgement and restart.
 - [ ] Add performance tests for ingestion, sealing, verification, replay, compression and connector lag.
-- [ ] Test supported upgrades and explicit rejection of unsupported historical and future versions.
+- [x] Test retained version 1, epoch-aware version 2 and explicit rejection of unsupported future event and container versions.
 
 ## Operations and release
 
