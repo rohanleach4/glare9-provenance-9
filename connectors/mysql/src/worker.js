@@ -105,7 +105,6 @@ export class MySqlConnectorWorker {
         this.status.lastErrorCode = error.code ?? "CONNECTOR_LOOP_FAILED";
         this.logger.error("MySQL connector loop failed", {
           code: this.status.lastErrorCode,
-          message: error.message,
         });
         await delay(this.pollIntervalMs, signal);
       }

@@ -59,7 +59,6 @@ main().catch((error) => {
     service: "glare9-provenance-connector-mysql",
     status: "failed",
     code: error.code ?? "UNEXPECTED",
-    message: error.message,
   }));
   process.exitCode = 1;
 });

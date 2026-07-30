@@ -39,6 +39,8 @@ The shared contract lives under `packages/connector-contract`. Database implemen
 
 Stable accepted-first receipt fields, polling and error semantics are specified in [`docs/G9P-ingestion-receipts-v2.md`](./docs/G9P-ingestion-receipts-v2.md).
 
+Outbox retention, dead-letter review and byte-identical replay are specified in [`docs/G9P-mysql-outbox-operations-v1.md`](./docs/G9P-mysql-outbox-operations-v1.md). Connector upgrade schema-neutrality and its automated evidence are recorded in [`docs/G9P-connector-schema-neutrality-v1.md`](./docs/G9P-connector-schema-neutrality-v1.md).
+
 ## MySQL connector
 
 ### Implementation status

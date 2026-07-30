@@ -92,3 +92,63 @@ test("worker dead-letters an outbox envelope whose event ID does not match", asy
   assert.equal(failure.error.code, "OUTBOX_EVENT_ID_MISMATCH");
   assert.equal(failure.error.retryable, false);
 });
+
+test("connector loop diagnostics omit arbitrary exception messages", async () => {
+  const sentinel = "DO-NOT-LOG-credential-or-event-payload";
+  const logs = [];
+  const controller = new AbortController();
+  const worker = new MySqlConnectorWorker({
+    repository: {
+      claimBatch: async () => { throw new Error(sentinel); },
+    },
+    provenanceClient: {},
+    connectorId: "connector-1",
+    pollIntervalMs: 1,
+    logger: {
+      error: (...values) => {
+        logs.push(values);
+        controller.abort();
+      },
+    },
+  });
+  await worker.run(controller.signal);
+  assert.equal(JSON.stringify(logs).includes(sentinel), false);
+  assert.equal(worker.snapshot().lastErrorCode, "CONNECTOR_LOOP_FAILED");
+});
+
+test("worker delivers application-schema payloads opaquely through the shared envelope", async () => {
+  const opaqueEnvelope = {
+    version: 1,
+    eventId: "schema-neutral-event",
+    ledgerId: "schema-neutral-ledger",
+    subject: "customer-defined:subject",
+    type: "customer.future.event.type",
+    schemaVersion: 987,
+    occurredAt: "2026-07-30T12:00:00.000Z",
+    recordedAt: "2026-07-30T12:00:00.000Z",
+    source: { kind: "outbox", identity: "customer-application" },
+    payload: {
+      customerDefinedObject: { arbitrary: [1, true, "future-value"] },
+      fieldsUnknownToConnector: "must remain untouched",
+    },
+  };
+  let submitted;
+  const repository = {
+    claimBatch: async () => [{ ...claimed[0], eventId: opaqueEnvelope.eventId, envelope: opaqueEnvelope }],
+    markDelivered: async () => {},
+    markFailed: async () => assert.fail("schema-neutral envelope should be delivered"),
+  };
+  const worker = new MySqlConnectorWorker({
+    repository,
+    provenanceClient: {
+      submitAcceptedBatch: async (events) => {
+        submitted = structuredClone(events);
+        return [{ ...receipt, eventId: opaqueEnvelope.eventId, ledgerId: opaqueEnvelope.ledgerId }];
+      },
+    },
+    connectorId: "connector-1",
+    logger: { error: () => {} },
+  });
+  assert.equal(await worker.runOnce(), 1);
+  assert.deepEqual(submitted, [opaqueEnvelope]);
+});

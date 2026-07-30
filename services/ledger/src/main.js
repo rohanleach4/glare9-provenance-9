@@ -44,6 +44,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(JSON.stringify({ service: "glare9-provenance-ledger", status: "failed", code: error.code ?? "UNEXPECTED", message: error.message }));
+  console.error(JSON.stringify({ service: "glare9-provenance-ledger", status: "failed", code: error.code ?? "UNEXPECTED" }));
   process.exitCode = 1;
 });

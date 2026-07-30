@@ -76,6 +76,8 @@ The `event_id` column and `envelope.eventId` must be identical. The envelope mus
 - Permanent failures and exhausted retries are dead-lettered.
 - Delivered and dead-lettered rows are retained until an explicit customer retention process removes them.
 
+Follow [`docs/G9P-mysql-outbox-operations-v1.md`](../../docs/G9P-mysql-outbox-operations-v1.md) for retention, dead-letter review, replay and reconciliation. The schema-neutral upgrade boundary is evidenced in [`docs/G9P-connector-schema-neutrality-v1.md`](../../docs/G9P-connector-schema-neutrality-v1.md).
+
 ## Tests
 
 Run unit and worker tests:

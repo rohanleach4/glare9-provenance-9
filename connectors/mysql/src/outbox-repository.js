@@ -124,7 +124,7 @@ export class MySqlOutboxRepository {
 
   async markFailed(claimed, error, { retryDelayMs }) {
     const errorCode = String(error.code ?? "DELIVERY_FAILED").slice(0, 128);
-    const errorMessage = String(error.message ?? "Delivery failed").slice(0, 1024);
+    const errorMessage = `Delivery failed with code ${errorCode}`;
     const retryable = error.retryable !== false;
     const retryDelayMicroseconds = Math.max(100_000, Math.round(retryDelayMs * 1_000));
     const connection = await this.pool.getConnection();

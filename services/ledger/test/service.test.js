@@ -771,3 +771,32 @@ test("ingestion requires the configured bearer token", async () => {
     );
   });
 });
+
+test("unexpected request failures do not disclose payloads or credentials", async () => {
+  const sentinel = "DO-NOT-LOG-payload-secret-private-key";
+  const logs = [];
+  const service = createLedgerServer({
+    ledger: {
+      ingestBatch: async () => { throw new Error(sentinel); },
+    },
+    apiToken: "diagnostic-test-token",
+    logger: { error: (...values) => logs.push(values) },
+  });
+  const address = await service.listen({ host: "127.0.0.1", port: 0 });
+  try {
+    const response = await fetch(`http://127.0.0.1:${address.port}/v1/events:batch`, {
+      method: "POST",
+      headers: {
+        authorization: "Bearer diagnostic-test-token",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ contractVersion: 1, events: [{ payload: sentinel }] }),
+    });
+    assert.equal(response.status, 500);
+    const diagnostics = JSON.stringify({ body: await response.json(), logs });
+    assert.equal(diagnostics.includes(sentinel), false);
+    assert.equal(diagnostics.includes("diagnostic-test-token"), false);
+  } finally {
+    await service.close();
+  }
+});

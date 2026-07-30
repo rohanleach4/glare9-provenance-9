@@ -143,7 +143,7 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
       sendJson(response, 404, { code: "NOT_FOUND", message: "Route not found", retryable: false, requestId });
     } catch (error) {
       const status = errorStatus(error);
-      if (status === 500) logger.error("Ledger request failed", { requestId, code: error.code ?? "UNEXPECTED", message: error.message });
+      if (status === 500) logger.error("Ledger request failed", { requestId, code: error.code ?? "UNEXPECTED" });
       sendJson(response, status, {
         code: error.code ?? "INTERNAL_ERROR",
         message: status === 500 ? "The ledger service could not complete the request" : error.message,
