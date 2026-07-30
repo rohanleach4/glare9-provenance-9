@@ -68,7 +68,7 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [ ] Set reviewed coverage expectations for security- and protocol-critical code.
 - [ ] Add property-based tests for codecs, routing, idempotency and segment invariants.
 - [ ] Fuzz canonical decoding, frame parsing, decompression and imported evidence.
-- [ ] Add fault-injection tests for append, compression, sync, promotion, acknowledgement and restart.
+- [x] Add fault-injection tests for append, compression, sync, promotion, acknowledgement and restart.
 - [ ] Add performance tests for ingestion, sealing, verification, replay, compression and connector lag.
 - [ ] Test supported upgrades and explicit rejection of unsupported historical and future versions.
 

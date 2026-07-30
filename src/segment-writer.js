@@ -60,6 +60,7 @@ export async function writeSegment({
   createdAt = new Date().toISOString(),
   blockTargetBytes = DEFAULT_BLOCK_TARGET,
   maxRecordBytes = DEFAULT_MAX_RECORD,
+  testFaultInjector,
 }) {
   invariant(Array.isArray(events) && events.length > 0, "SEGMENT_EVENTS", "A segment requires at least one event");
   invariant(Number.isSafeInteger(segmentNumber) && segmentNumber >= 0, "SEGMENT_NUMBER", "segmentNumber must be a non-negative safe integer");
@@ -135,7 +136,9 @@ export async function writeSegment({
   let firstRecordIndex = 0;
   const encodedBlocks = recordBlocks.map((records, blockIndex) => {
     const uncompressed = Buffer.concat(records.map((record) => record.framed));
+    testFaultInjector?.("segment.before-compression", { blockIndex, uncompressedLength: uncompressed.length });
     const compressed = compressBlock(uncompressed);
+    testFaultInjector?.("segment.after-compression", { blockIndex, compressedLength: compressed.length });
     const block = {
       blockIndex,
       firstRecordIndex,
@@ -193,6 +196,7 @@ export async function writeSegment({
     errorCode: "SEGMENT_WRITE",
     extensionErrorCode: "SEGMENT_EXTENSION",
     description: "sealed segment",
+    testFaultInjector,
   });
   const segmentHash = domainHash(profile.fileHashDomain, fileBytes);
 

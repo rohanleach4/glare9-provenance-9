@@ -50,7 +50,7 @@ function retryable(error) {
   return new Set(["SEGMENT_WRITE", "COMPRESS_FAILED"]).has(error.code);
 }
 
-export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvents = 500, maxRequestBytes = 8 * 1024 * 1024, logger = console }) {
+export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvents = 500, maxRequestBytes = 8 * 1024 * 1024, logger = console, testFaultInjector }) {
   const server = createServer(async (request, response) => {
     const requestId = request.headers["x-request-id"] ?? randomUUID();
     try {
@@ -99,6 +99,7 @@ export function createLedgerServer({ ledger, apiToken, adminToken, maxBatchEvent
           throw new G9pError("INVALID_BATCH", `Request must contain contractVersion 1 and between 1 and ${maxBatchEvents} events`);
         }
         const receipts = await ledger.ingestBatch(body.events);
+        testFaultInjector?.("service.before-acknowledgement", { requestId, receipts });
         sendJson(response, 200, { contractVersion: 1, receipts, requestId });
         return;
       }

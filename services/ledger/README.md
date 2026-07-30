@@ -68,6 +68,8 @@ The coordinator drains all earlier accepted events under the old policy, capture
 
 Abandoned segment and routing `.g9p.part` files are explicitly provisional and are discarded on startup; their retained intake can then be sealed again. Complete durable-intake provisional records are promoted and recovered. Final `.g9p` files remain create-only and authoritative.
 
+The automated fault-injection suite interrupts intake append, compression, file and directory synchronisation, promotion, acknowledgement and both sides of routing-epoch publication. It then rebuilds the ledger from disk and checks exact event and epoch uniqueness.
+
 ## Current limitations
 
 - The public HTTP contract waits for sealing even though durable accepted intake now exists internally.

@@ -97,9 +97,10 @@ async function readRecord(path, expectedName) {
 }
 
 export class DurableIntake {
-  constructor(directory) {
+  constructor(directory, { testFaultInjector } = {}) {
     this.directory = directory;
     this.nextSequence = 0;
+    this.testFaultInjector = testFaultInjector;
   }
 
   async initialize() {
@@ -145,14 +146,19 @@ export class DurableIntake {
     let durable = false;
     try {
       handle = await open(partPath, "wx", 0o600);
+      this.testFaultInjector?.("intake.after-open", { path, partPath, eventId: event.eventId });
       await handle.writeFile(payload);
+      this.testFaultInjector?.("intake.after-write", { path, partPath, eventId: event.eventId });
       await handle.sync();
+      this.testFaultInjector?.("intake.after-file-sync", { path, partPath, eventId: event.eventId });
       await handle.close();
       handle = undefined;
       await link(partPath, path);
       promoted = true;
+      this.testFaultInjector?.("intake.after-promotion", { path, partPath, eventId: event.eventId });
       await syncDirectory(this.directory);
       durable = true;
+      this.testFaultInjector?.("intake.after-directory-sync", { path, partPath, eventId: event.eventId });
       await unlink(partPath);
       await syncDirectory(this.directory);
     } catch (error) {

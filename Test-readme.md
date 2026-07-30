@@ -144,6 +144,8 @@ The current suite covers:
 - Ledger routing-history creation, descriptor-bound segments, legacy migration, restart, mismatch and tamper handling
 - Durable accepted-event retention, idempotency, provisional promotion, corruption rejection and restart sealing
 - Signed transition barriers, credential separation, retry idempotency, missing-head rejection and epoch activation recovery
+- Injected intake-append, compression, file-sync, directory-sync, promotion and acknowledgement failures
+- Restart invariants before and after signed routing-epoch publication
 - Authenticated ingestion and idempotent receipt replay
 - Event-index reconstruction from verified segments
 - Connector response validation
@@ -161,6 +163,12 @@ npm run test:integration --workspace=@glare9/provenance-connector-mysql
 ```
 
 The opt-in test creates and drops only a uniquely named temporary outbox table. The test is skipped when `MYSQL_INTEGRATION_URL` is not supplied. Never supply production credentials or a production database.
+
+### Fault injection
+
+The ledger service exposes narrowly named `testFaultInjector` hooks only through direct construction in the test process. Production configuration and HTTP requests cannot enable them. The suite interrupts durable intake, compression, sealed-file synchronisation, create-only promotion, response acknowledgement and routing-epoch publication.
+
+Every injected case restarts from the same filesystem state and checks that an event is retained or sealed exactly once. Transition tests cover both sides of the publication boundary: before publication the old epoch remains authoritative; after publication restart must activate the signed new epoch. These deterministic tests do not replace future abrupt-process, filesystem, power-loss or hardware fault testing.
 
 The repository should eventually provide additional stable commands for:
 

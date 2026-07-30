@@ -237,6 +237,7 @@ export async function writeRoutingEpoch({
   previousShardHeads = [],
   previousRoutingPolicy = null,
   authorizationPolicy = AUTHORIZATION_POLICY,
+  testFaultInjector,
 }) {
   const descriptor = descriptorForWrite({
     ledgerId,
@@ -268,6 +269,7 @@ export async function writeRoutingEpoch({
     errorCode: "EPOCH_WRITE",
     extensionErrorCode: "EPOCH_EXTENSION",
     description: "sealed routing epoch",
+    testFaultInjector,
   });
 
   return {

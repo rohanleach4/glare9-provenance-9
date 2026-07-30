@@ -117,7 +117,7 @@ async function routingEpochFiles(path) {
 }
 
 export class LocalLedger {
-  constructor({ dataDirectory, signer, topologyAuthority, shardCount = 1, adoptLegacyRoutingHistory = false }) {
+  constructor({ dataDirectory, signer, topologyAuthority, shardCount = 1, adoptLegacyRoutingHistory = false, testFaultInjector }) {
     if (topologyAuthority?.algorithm !== "ed25519" || !topologyAuthority.privateKey || !(topologyAuthority.publicKeyDer instanceof Uint8Array)) {
       throw new G9pError("LEDGER_TOPOLOGY_AUTHORITY", "A local Ed25519 topology authority is required");
     }
@@ -128,6 +128,7 @@ export class LocalLedger {
     this.signer = signer;
     this.topologyAuthority = topologyAuthority;
     this.adoptLegacyRoutingHistory = adoptLegacyRoutingHistory;
+    this.testFaultInjector = testFaultInjector;
     this.defaultRoutingPolicy = createRoutingPolicy(shardCount);
     this.routingEpochs = new Map();
     this.routingEpochDirectories = new Map();
@@ -136,7 +137,7 @@ export class LocalLedger {
     this.eventIndex = new Map();
     this.pendingIndex = new Map();
     this.shardStates = new Map();
-    this.intake = new DurableIntake(this.intakeDirectory);
+    this.intake = new DurableIntake(this.intakeDirectory, { testFaultInjector });
     this.operationTail = Promise.resolve();
   }
 
@@ -381,6 +382,7 @@ export class LocalLedger {
       routingPolicy: this.defaultRoutingPolicy,
       topologyAuthority: this.topologyAuthority,
       reason,
+      testFaultInjector: this.testFaultInjector,
     });
     const verified = await verifyRoutingEpoch(outputPath, {
       trustedKeyIds: new Set([this.topologyAuthority.keyId]),
@@ -536,6 +538,7 @@ export class LocalLedger {
           epochHash: fromHex(routingEpoch.epochHash, 32),
         },
         signer: this.signer,
+        testFaultInjector: this.testFaultInjector,
       });
       this.#recordLedgerSegmentFormat(ledgerId, state.epochNumber, state.formatVersion);
 
@@ -621,6 +624,7 @@ export class LocalLedger {
       previousEpochHash: fromHex(activeEpoch.epochHash, 32),
       previousShardHeads,
       previousRoutingPolicy: activeEpoch.routingPolicy,
+      testFaultInjector: this.testFaultInjector,
     });
     const verified = await verifyRoutingEpoch(outputPath, {
       trustedKeyIds: new Set([this.topologyAuthority.keyId]),
