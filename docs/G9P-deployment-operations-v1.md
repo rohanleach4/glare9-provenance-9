@@ -4,6 +4,8 @@
 
 The current experimental implementation supports one authoritative ledger-service process using the bundled local-filesystem sealed-storage adapter, plus zero or more separately deployed connectors. A MySQL connector uses only its dedicated transactional outbox on a Workbench-administered MySQL server. Readers and offline verifiers open copied sealed `.g9p` objects read-only.
 
+The reference `start:ledger` process enforces this topology with a create-only writer lock in its data directory. It never automatically steals an existing lock. Embedded users of `LocalLedger` must supply equivalent exclusive ownership because the library façade does not assume control of the host process lifecycle.
+
 ```text
 application transaction → provenance_outbox → MySQL connector → one ledger service
                                                               ↓

@@ -56,6 +56,9 @@ Treat readers, decompressors, decoders, indexes and proof parsers as hostile-inp
 - Forward segment-key rotation across restart, positional historical trust, rollback rejection and full offline chain verification
 - Mixed-checkpoint witness rejection and duplicate/unordered threshold membership rejection
 - Redacted technical-qualification preflight, external signer/trust matching and open high-severity finding detection
+- Exclusive ledger-service writer locking and clean reacquisition
+- Explicit checkpoint predecessor assertion and chain-verification status
+- Fail-fast MySQL table-name configuration and redacted invalid-intake recovery warnings
 - Valid logical records in a physically altered container
 
 ### Connector contract tests

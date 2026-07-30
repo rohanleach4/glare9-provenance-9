@@ -10,6 +10,8 @@ A checkpoint uses container version 2 and exact frames `CHK1`, `SIG1`, `END!`. I
 
 The logical commitment is `SHA256-domain("checkpoint-v1", CHK1 payload)`, the signature input is `SHA256-domain("checkpoint-signature-v1", CHK1 payload)`, and the exact file commitment is `SHA256-domain("checkpoint-file-v1", every byte through END!)`.
 
+Container verification alone returns `previousHashVerified: false`. Supplying `expectedPreviousCheckpointHash` requires an exact nullable 32-byte predecessor match and returns `true`; a mismatch fails with `CHECKPOINT_PREVIOUS_HASH`. This result distinguishes cryptographic validity from verified history continuity.
+
 ## Witness receipt
 
 A separately administered witness first verifies the checkpoint signature and an explicitly configured publisher trust set. It then writes container version 2 frames `WIT1`, `SIG1`, `END!`. The receipt binds ledger/checkpoint identity, logical checkpoint hash, exact checkpoint file hash, observation time and witness identity.

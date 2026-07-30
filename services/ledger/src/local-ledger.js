@@ -125,6 +125,7 @@ export class LocalLedger {
     lifecycle,
     sealedStorage,
     testFaultInjector,
+    onRecoveryWarning,
   }) {
     if (topologyAuthority?.algorithm !== "ed25519" || !topologyAuthority.privateKey || !(topologyAuthority.publicKeyDer instanceof Uint8Array)) {
       throw new G9pError("LEDGER_TOPOLOGY_AUTHORITY", "A local Ed25519 topology authority is required");
@@ -158,7 +159,7 @@ export class LocalLedger {
     this.assignedPendingIds = new Set();
     this.pendingBytes = 0;
     this.activeBlockBytes = 0;
-    this.intake = new DurableIntake(this.intakeDirectory, { testFaultInjector });
+    this.intake = new DurableIntake(this.intakeDirectory, { testFaultInjector, onRecoveryWarning });
     this.activeStore = new ActiveSegmentStore(this.activeStateDirectory, { testFaultInjector });
     this.operationTail = Promise.resolve();
     this.ageTimer = undefined;
@@ -482,6 +483,7 @@ export class LocalLedger {
         const verified = await verifyCheckpointBytes(await this.sealedStorage.read(key), {
           trustedKeyIds: [this.checkpointPublisher.keyId],
           requireTrustedSigner: true,
+          expectedPreviousCheckpointHash: previousCheckpointHash === null ? null : fromHex(previousCheckpointHash, 32),
         });
         ledgerId ??= verified.ledgerId;
         if (verified.ledgerId !== ledgerId || ledgerDirectoryName(verified.ledgerId) !== ledgerDirectory
@@ -1098,6 +1100,7 @@ export class LocalLedger {
       const verified = await verifyCheckpointBytes(await this.sealedStorage.read(key), {
         trustedKeyIds: [this.checkpointPublisher.keyId],
         requireTrustedSigner: true,
+        expectedPreviousCheckpointHash: previousCheckpointHash,
       });
       if (verified.ledgerId !== ledgerId || verified.checkpointNumber !== checkpointNumber || verified.previousCheckpointHash !== (previousCheckpointHash === null ? null : toHex(previousCheckpointHash))) {
         throw new G9pError("CHECKPOINT_SEQUENCE", `Checkpoint ${key} does not continue the ledger checkpoint chain`);

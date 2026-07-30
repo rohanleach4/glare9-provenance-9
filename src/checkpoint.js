@@ -124,7 +124,16 @@ export async function verifyCheckpointBytes(bytes, options = {}) {
   try { key = importPublicKey(descriptor.publisher.publicKey); } catch (error) { fail("CHECKPOINT_PUBLIC_KEY", "Checkpoint publisher key cannot be imported", error); }
   invariant(verifyDomainCommitment(key, "checkpoint-signature-v1", statement.payload, signedValue.signature), "CHECKPOINT_SIGNATURE", "Checkpoint signature is invalid");
   const publisherTrusted = trusted(options, descriptor.publisher.keyId, "CHECKPOINT_UNTRUSTED_PUBLISHER");
-  return { valid: true, ...descriptor, previousCheckpointHash: descriptor.previousCheckpointHash === null ? null : toHex(descriptor.previousCheckpointHash), routingEpochHash: toHex(descriptor.routingEpochHash), shardHeads: descriptor.shardHeads.map((head) => ({ ...head, segmentHash: head.segmentHash === null ? null : toHex(head.segmentHash) })), checkpointHash: toHex(domainHash("checkpoint-v1", statement.payload)), fileHash: toHex(domainHash("checkpoint-file-v1", bytes)), publisherKeyId: descriptor.publisher.keyId, publisherTrusted };
+  let previousHashVerified = false;
+  if (Object.hasOwn(options, "expectedPreviousCheckpointHash")) {
+    const expected = hash(options.expectedPreviousCheckpointHash, "expectedPreviousCheckpointHash", true);
+    const matches = expected === null
+      ? descriptor.previousCheckpointHash === null
+      : descriptor.previousCheckpointHash !== null && Buffer.from(expected).equals(Buffer.from(descriptor.previousCheckpointHash));
+    invariant(matches, "CHECKPOINT_PREVIOUS_HASH", "Checkpoint does not link to the expected previous checkpoint");
+    previousHashVerified = true;
+  }
+  return { valid: true, ...descriptor, previousCheckpointHash: descriptor.previousCheckpointHash === null ? null : toHex(descriptor.previousCheckpointHash), previousHashVerified, routingEpochHash: toHex(descriptor.routingEpochHash), shardHeads: descriptor.shardHeads.map((head) => ({ ...head, segmentHash: head.segmentHash === null ? null : toHex(head.segmentHash) })), checkpointHash: toHex(domainHash("checkpoint-v1", statement.payload)), fileHash: toHex(domainHash("checkpoint-file-v1", bytes)), publisherKeyId: descriptor.publisher.keyId, publisherTrusted };
 }
 
 export async function verifyCheckpoint(path, options = {}) {

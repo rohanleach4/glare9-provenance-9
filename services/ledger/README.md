@@ -24,6 +24,8 @@ From the repository root:
 npm run start:ledger
 ```
 
+`start:ledger` acquires `.ledger-writer.lock` create-only in `PROVENANCE_DATA_DIR` before opening ledger recovery state. A second service using the same directory fails immediately. The lock is removed only after clean shutdown. After an unclean exit, confirm by process/service-manager inspection that no writer remains, preserve the lock contents with the incident record, and remove only that exact lock file before restart. Never automate lock stealing from PID liveness alone.
+
 Default endpoints:
 
 ```text
@@ -44,7 +46,7 @@ POST /v1/admin/checkpoints
 
 Before an event is assigned to a routing epoch or shard, the service writes a canonical ordered intake record under `intake/`. It synchronises the record, promotes it without replacing another record, and synchronises the intake directory before the event can enter the accepted state. Intake records are local service recovery state, not sealed `.g9p` evidence files.
 
-After the applicable segment is sealed, the corresponding intake record is retired. On startup, the service strictly decodes and validates every retained record, removes records already represented by verified sealed history, promotes complete provisional records left by an interrupted write, and resumes sealing the remainder exactly once by event identity and canonical content.
+After the applicable segment is sealed, the corresponding intake record is retired. On startup, the service strictly decodes and validates every retained record, removes records already represented by verified sealed history, promotes complete provisional records left by an interrupted write, and resumes sealing the remainder exactly once by event identity and canonical content. An invalid pre-acknowledgement partial is discarded with a redacted `INTAKE_PART_DISCARDED` recovery warning.
 
 The public version 1 HTTP contract continues to drain accepted events synchronously and return `sealed` receipts. The `accepted` stage is intentionally topology-neutral so a routing-transition barrier can retain arrivals without assigning them to either the old or new epoch. Contract version 2 exposes accepted and provisional lifecycle receipts explicitly.
 
@@ -144,3 +146,4 @@ The separately deployable reference witness is documented in [`services/witness/
 - Without an external segment trust bundle, existing history is expected to use the current local signer. With a bundle, every historical and next segment position must be explicitly trusted.
 - Transition administration currently uses one local topology-authority key and one bearer credential; threshold/customer authorization is not implemented.
 - Version 1 witness receipts verify checkpoint signatures and configured publisher trust; they do not assert a full independent traversal of referenced segment history.
+- Direct embedded construction of `LocalLedger` does not acquire the service-process lock; an embedding host must provide equivalent exclusive-writer ownership.

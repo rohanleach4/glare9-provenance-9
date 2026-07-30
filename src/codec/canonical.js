@@ -9,6 +9,7 @@ const TAG_STRING = 0x20;
 const TAG_BYTES = 0x30;
 const TAG_ARRAY = 0x40;
 const TAG_MAP = 0x50;
+const MAX_VARUINT_BYTES = 10;
 
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
 
@@ -24,6 +25,7 @@ function encodeVarUint(value) {
   const bytes = [];
   let remaining = value;
   do {
+    invariant(bytes.length < MAX_VARUINT_BYTES, "ENCODE_VARUINT_LIMIT", `Unsigned varint exceeds ${MAX_VARUINT_BYTES} bytes`);
     let byte = Number(remaining & 0x7fn);
     remaining >>= 7n;
     if (remaining !== 0n) byte |= 0x80;

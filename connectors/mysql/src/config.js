@@ -1,3 +1,5 @@
+import { validateTablePath } from "./table.js";
+
 function integer(value, fallback, name, { min, max }) {
   const parsed = value === undefined ? fallback : Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
@@ -64,9 +66,11 @@ export function loadConnectorConfig(environment = process.env) {
     };
   }
 
+  const outboxTable = environment.MYSQL_OUTBOX_TABLE ?? "provenance_outbox";
+  validateTablePath(outboxTable);
   return Object.freeze({
     mysql: Object.freeze(mysql),
-    outboxTable: environment.MYSQL_OUTBOX_TABLE ?? "provenance_outbox",
+    outboxTable,
     provenanceUrl: required(environment.PROVENANCE_URL, "PROVENANCE_URL"),
     provenanceTokens: tokenSet(environment.PROVENANCE_API_TOKENS, environment.PROVENANCE_API_TOKEN, "PROVENANCE_API_TOKENS"),
     connectorId: required(environment.CONNECTOR_ID, "CONNECTOR_ID"),

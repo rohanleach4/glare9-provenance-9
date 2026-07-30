@@ -40,6 +40,11 @@ test("connector can overlap bounded ledger credentials during rotation", () => {
   assert.deepEqual(config.provenanceTokens, ["new-ledger-token-123456", "old-ledger-token-123456"]);
 });
 
+test("connector rejects an unsafe outbox table during configuration", () => {
+  assert.throws(() => loadConnectorConfig({ ...baseEnvironment, MYSQL_OUTBOX_TABLE: "outbox; DROP TABLE evidence" }), /safe MySQL identifiers/u);
+  assert.equal(loadConnectorConfig({ ...baseEnvironment, MYSQL_OUTBOX_TABLE: "audit.provenance_outbox" }).outboxTable, "audit.provenance_outbox");
+});
+
 test("table paths accept only safe one- or two-part identifiers", () => {
   assert.equal(quoteTablePath("provenance_outbox"), "`provenance_outbox`");
   assert.equal(quoteTablePath("audit.provenance_outbox"), "`audit`.`provenance_outbox`");

@@ -92,6 +92,7 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-signer-trust-operations-v1.md`](./docs/G9P-signer-trust-operations-v1.md) — signer trust, rotation and revocation procedure
 - [`docs/G9P-format-ambiguity-audit-v1.md`](./docs/G9P-format-ambiguity-audit-v1.md) — dual-verifier authenticated-meaning audit
 - [`docs/G9P-technical-qualification-v1.md`](./docs/G9P-technical-qualification-v1.md) — redacted signer, MySQL/TLS and security qualification evidence
+- [`docs/G9P-independent-review-response-2026-07.md`](./docs/G9P-independent-review-response-2026-07.md) — disposition of external agent review findings
 - [`docs/G9P-development-ci-v1.md`](./docs/G9P-development-ci-v1.md) — supported runtime and automated CI/security checks
 - [`docs/G9P-quality-hardening-v1.md`](./docs/G9P-quality-hardening-v1.md) — enforced coverage, property testing and bounded fuzzing
 - [`docs/G9P-performance-baseline-v1.md`](./docs/G9P-performance-baseline-v1.md) — end-to-end performance harness and measured baseline

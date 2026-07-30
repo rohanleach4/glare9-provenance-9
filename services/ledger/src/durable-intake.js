@@ -97,10 +97,11 @@ async function readRecord(path, expectedName) {
 }
 
 export class DurableIntake {
-  constructor(directory, { testFaultInjector } = {}) {
+  constructor(directory, { testFaultInjector, onRecoveryWarning } = {}) {
     this.directory = directory;
     this.nextSequence = 0;
     this.testFaultInjector = testFaultInjector;
+    this.onRecoveryWarning = onRecoveryWarning;
   }
 
   async initialize() {
@@ -204,6 +205,7 @@ export class DurableIntake {
       } catch {
         await unlink(partPath);
         await syncDirectory(this.directory);
+        try { this.onRecoveryWarning?.({ code: "INTAKE_PART_DISCARDED", action: "discarded-invalid-provisional-intake" }); } catch {}
         continue;
       }
       await link(partPath, finalPath);

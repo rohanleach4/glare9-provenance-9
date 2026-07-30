@@ -11,7 +11,7 @@ Preserve evidence before repair. Record incident time, software/configuration id
 3. Determine compromise window from external key/audit evidence; embedded keys alone do not establish trust.
 4. Rotate forward under the approved trust procedure and record revocation effective time externally.
 5. Reverify pre-window, window and post-rotation history separately.
-6. Do not claim the current implementation performs in-ledger signer rotation or revocation; escalate until key-registration formats and KMS/HSM integration exist.
+6. The external positional segment trust bundle supports forward producer rotation and revoked-position rejection, but it is not an in-ledger registration authority or approved KMS/HSM. Escalate until the external bundle, custody system and compromise boundary are independently approved.
 
 ## Corrupt storage
 
@@ -21,6 +21,14 @@ Preserve evidence before repair. Record incident time, software/configuration id
 4. Compare exact bytes with verified backup/retention copies.
 5. Restore only an exact independently verified object into an empty recovery location, then rebuild indexes and receipts.
 6. If no trusted copy exists, preserve the gap as an incident. Never synthesize a replacement segment.
+
+## Stale writer lock
+
+1. Treat `LEDGER_WRITER_LOCKED` as evidence that another writer may still own the data directory; do not delete the lock as a first response.
+2. Stop connector delivery or allow retryable failure while checking the service manager and host process table through an authenticated operator channel.
+3. Preserve the lock file and incident time externally. It contains process metadata and a random ownership token, not a private signing key.
+4. Only after confirming no ledger process can still write, remove the exact `.ledger-writer.lock` file from the configured ledger data directory.
+5. Restart one service, require verified-history reconstruction and reconcile retained intake/outbox custody before reopening traffic.
 
 ## Missing segment
 
@@ -32,7 +40,7 @@ Preserve evidence before repair. Record incident time, software/configuration id
 
 ## Failed witness
 
-Checkpoint and witness operation is not implemented. If a deployment experiments with an external witness, loss of witness coverage must not be represented as witnessed finality. Preserve the last receipt, stop issuing witnessed claims and escalate to the future checkpoint/witness protocol owner. Do not substitute an operator timestamp or local signature.
+If checkpoint publication or an independently operated witness fails, loss of coverage must not be represented as witnessed finality. Preserve the last valid checkpoint and witness receipt, stop issuing new witnessed claims, identify whether publisher trust, witness trust or threshold membership failed, and escalate to the protocol owner. Do not substitute an operator timestamp or local signature.
 
 ## Connector backlog
 

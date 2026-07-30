@@ -100,3 +100,17 @@ test("threshold verification rejects mixed checkpoints and ambiguous policy memb
     );
   });
 });
+
+test("checkpoint verification reports whether chain continuity was asserted", async () => {
+  await temporary(async (directory) => {
+    const publisher = generateSigner();
+    const previousCheckpointHash = Buffer.alloc(32, 7);
+    const path = join(directory, "checkpoint-chain.g9p");
+    await writeCheckpoint({ outputPath: path, ledgerId: "chain-ledger", checkpointNumber: 1, previousCheckpointHash, routingEpochNumber: 0, routingEpochHash: Buffer.alloc(32, 8), shardHeads: [{ epochNumber: 0, shardId: "shard-0000", segmentNumber: null, segmentHash: null }], publisher, createdAt: time });
+    const unchecked = await verifyCheckpoint(path);
+    assert.equal(unchecked.previousHashVerified, false);
+    const checked = await verifyCheckpoint(path, { expectedPreviousCheckpointHash: previousCheckpointHash });
+    assert.equal(checked.previousHashVerified, true);
+    await assert.rejects(verifyCheckpoint(path, { expectedPreviousCheckpointHash: Buffer.alloc(32, 9) }), (error) => error.code === "CHECKPOINT_PREVIOUS_HASH");
+  });
+});
