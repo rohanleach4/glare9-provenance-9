@@ -4,7 +4,7 @@
 
 This document specifies the epoch-aware evolution of the experimental Glare•9 Provenance segment container. Format version 2 binds every segment to a signed routing-epoch descriptor without changing any sealed version 1 bytes.
 
-Format version 2 is **experimental**. Compatibility is not promised until the project publishes a stable format policy. Readers must continue to verify version 1 according to [`G9P-format-v1.md`](./G9P-format-v1.md).
+Format version 2 is **experimental** under the candidate policy in [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid bytes are frozen for verification, but the stable support lifetime is not approved. Readers must continue to verify version 1 according to [`G9P-format-v1.md`](./G9P-format-v1.md).
 
 ## File identity and profile selection
 

@@ -4,10 +4,10 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 
 ## Protocol and product decisions
 
-- [ ] Approve and publish the G9P format-version stability and compatibility policy.
-- [ ] Complete an independent threat model covering writers, readers, connectors, storage, keys and hostile `.g9p` input.
-- [ ] Publish cross-language conformance vectors for valid and precisely invalid segments.
-- [ ] Produce an independent verifier implementation and confirm agreement on the conformance vectors.
+- [x] Publish the candidate G9P format-version stability and compatibility policy, with final product-owner approval retained as an explicit go-live gate.
+- [x] Publish an implementation threat model covering writers, readers, connectors, storage, keys and hostile `.g9p` input, with independent approval retained as an explicit go-live gate.
+- [x] Publish language-neutral conformance vectors for valid and precisely invalid version 1/version 2 segments and routing epochs.
+- [x] Produce a separately implemented offline verifier with no production-code imports and confirm agreement on every frozen conformance vector.
 - [x] Approve the routing-epoch, forward-only resharding and topology-transition protocol in `docs/G9P-routing-epochs-v1.md`.
 - [ ] Specify checkpoint, witness-receipt and threshold-attestation formats.
 - [ ] Specify key registration, rotation, revocation and customer-controlled event signing.
@@ -35,7 +35,6 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Review and test parser, length, allocation and decompression ceilings against denial-of-service threats.
 - [x] Remove arbitrary exception text from service and connector diagnostics and test that payload and credential sentinels do not reach logs or HTTP failures.
 - [x] Add repeatable repository secret/path and syntax scanning, a zero-finding production dependency audit and scheduled CodeQL/vulnerability CI.
-- [ ] Commission an independent security and cryptographic design review before production use.
 
 ## Sharding and scale
 
@@ -89,4 +88,7 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [ ] No unresolved format ambiguity affecting independent verification.
 - [ ] Recovery, key rotation and full offline verification have been exercised successfully.
 - [ ] Production operators have approved the deployment, monitoring and incident runbooks.
+- [ ] The product owner has approved the published format stability and compatibility policy and its support lifetime.
+- [ ] An independent security reviewer has approved the threat model and cryptographic design, with every critical or high finding resolved.
+- [ ] An external implementer or reviewer has confirmed the conformance vectors and independently implemented verifier results.
 - [ ] The product owner has explicitly approved production use and its stated assurance level.

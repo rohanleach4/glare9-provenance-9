@@ -119,6 +119,14 @@ npm run test:all
 
 This runs the core, shared connector contract, ledger service and MySQL worker suites. Ledger HTTP tests open an ephemeral localhost port.
 
+Frozen valid and precisely invalid G9P objects are checked by both the production verifier and the separately implemented verifier:
+
+```bash
+npm run conformance:test
+```
+
+The language-neutral manifest is documented in `docs/G9P-conformance-vectors-v1.md`. Regeneration changes signed fixture bytes and must be deliberate and reviewed.
+
 Run the same suite with Node's built-in coverage report:
 
 ```bash

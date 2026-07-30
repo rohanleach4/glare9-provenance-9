@@ -4,7 +4,7 @@
 
 This document specifies the approved logical routing-epoch protocol and the first executable signed epoch-descriptor container. The reference ledger now implements the single-authority transition lifecycle, while the protocol remains experimental and does not represent production authorization approval.
 
-Routing protocol version 1 is experimental. Compatibility is not promised until the project publishes a stable format policy.
+Routing protocol version 1 is experimental under the candidate policy in [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid descriptor bytes are frozen for verification, but the stable support lifetime is not approved.
 
 ## Purpose
 
@@ -213,7 +213,7 @@ The first implementation may require one configured topology-authority Ed25519 k
 
 1. **Complete:** settle exact epoch-container frames and implement create-only writing.
 2. **Complete:** add strict offline verification with explicit topology-authority trust.
-3. Add stable canonical valid and invalid cross-language conformance vectors.
+3. **Complete:** add stable canonical valid and invalid language-neutral conformance vectors and a separately implemented verifier.
 4. **Complete:** persist and verify signed epoch-zero routing history while retaining version 1 segment support.
 5. **Complete:** implement segment format version 2, epoch-scoped storage and version 1 compatibility.
 6. Extend the sharding CLI with transition planning and movement reports.

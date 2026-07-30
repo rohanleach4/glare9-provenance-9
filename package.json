@@ -26,6 +26,8 @@
     "benchmark:lifecycle": "node scripts/benchmark-lifecycle.js",
     "benchmark:shards": "node scripts/benchmark-shards.js",
     "benchmark:performance": "node scripts/benchmark-performance.js",
+    "conformance:generate": "node scripts/generate-conformance-vectors.js",
+    "conformance:test": "node --test test/conformance.test.js",
     "scan:repository": "node scripts/security-scan.js",
     "audit:dependencies": "npm audit --omit=dev --audit-level=high",
     "start:ledger": "npm run start --workspace=@glare9/provenance-ledger-service",

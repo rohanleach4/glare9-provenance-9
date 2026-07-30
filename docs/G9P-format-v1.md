@@ -4,7 +4,7 @@
 
 This document specifies the first executable Glare•9 Provenance container. It exists to make the prototype independently inspectable and testable.
 
-Format version 1 is **experimental**. Compatibility is not promised until the project publishes a stable format policy. Any permanent byte-level change must update this document, the verifier and the conformance fixtures together.
+Format version 1 is **experimental** under the candidate policy in [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid bytes are frozen for verification, but the stable support lifetime is not approved. Any permanent byte-level change must use a new version and update the specification, verifiers and conformance vectors together.
 
 Signed routing-epoch descriptors and epoch-aware version 2 segments use container-version byte 2 with distinct first-frame profiles. They are specified in [`G9P-routing-epochs-v1.md`](./G9P-routing-epochs-v1.md) and [`G9P-format-v2.md`](./G9P-format-v2.md). Existing version 1 segment bytes are unchanged.
 
@@ -231,5 +231,5 @@ The storage-neutral publication and byte-verification boundary is documented in 
 - There is no checkpoint or witness container yet.
 - Events do not yet carry independent actor signatures.
 - Key registration, rotation and revocation are not implemented.
-- Formal cross-language conformance vectors are still required.
+- Language-neutral conformance vectors and a separately implemented verifier are published; external cross-language confirmation remains a go-live gate.
 - Zstandard compressor output does not have to be byte-identical across implementations; the stored compressed bytes are committed by their individual segment.
