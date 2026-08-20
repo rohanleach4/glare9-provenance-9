@@ -69,7 +69,30 @@ export function generateSigner() {
     privateKey,
     publicKey,
     publicKeyDer,
+    async sign(messageBytes) {
+      return cryptoSign(null, Buffer.from(messageBytes), privateKey);
+    },
   };
+}
+
+export function validateSigner(signer, code = "SIGNER_IDENTITY") {
+  invariant(signer?.algorithm === "ed25519", code, "An Ed25519 signer is required");
+  invariant(signer.publicKeyDer instanceof Uint8Array, code, "Signer publicKeyDer must contain an Ed25519 SPKI public key");
+  invariant(typeof signer.keyId === "string" && signer.keyId === publicKeyId(signer.publicKeyDer), code, "Signer keyId does not match its public key");
+  invariant(typeof signer.sign === "function" || signer.privateKey, code, "Signer must provide an asynchronous sign operation or a local private key");
+  return signer;
+}
+
+export async function signDomainWithSigner(signer, domain, commitmentBytes) {
+  validateSigner(signer);
+  const message = domainHash(domain, commitmentBytes);
+  const signature = typeof signer.sign === "function"
+    ? await signer.sign(Uint8Array.from(message))
+    : cryptoSign(null, message, signer.privateKey);
+  invariant(signature instanceof Uint8Array && signature.byteLength === 64, "SIGNER_SIGNATURE", "Ed25519 signer returned an invalid signature");
+  const publicKey = importPublicKey(signer.publicKeyDer);
+  invariant(cryptoVerify(null, message, publicKey, signature), "SIGNER_SIGNATURE", "Signer returned a signature that does not match its public key");
+  return Buffer.from(signature);
 }
 
 export function signCommitment(privateKey, commitmentBytes) {

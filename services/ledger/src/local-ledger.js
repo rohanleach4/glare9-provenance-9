@@ -127,10 +127,10 @@ export class LocalLedger {
     testFaultInjector,
     onRecoveryWarning,
   }) {
-    if (topologyAuthority?.algorithm !== "ed25519" || !topologyAuthority.privateKey || !(topologyAuthority.publicKeyDer instanceof Uint8Array)) {
-      throw new G9pError("LEDGER_TOPOLOGY_AUTHORITY", "A local Ed25519 topology authority is required");
+    if (topologyAuthority?.algorithm !== "ed25519" || (typeof topologyAuthority.sign !== "function" && !topologyAuthority.privateKey) || !(topologyAuthority.publicKeyDer instanceof Uint8Array)) {
+      throw new G9pError("LEDGER_TOPOLOGY_AUTHORITY", "An Ed25519 topology authority is required");
     }
-    if (checkpointPublisher?.algorithm !== "ed25519" || !checkpointPublisher.privateKey || !(checkpointPublisher.publicKeyDer instanceof Uint8Array)) {
+    if (checkpointPublisher?.algorithm !== "ed25519" || (typeof checkpointPublisher.sign !== "function" && !checkpointPublisher.privateKey) || !(checkpointPublisher.publicKeyDer instanceof Uint8Array)) {
       throw new G9pError("LEDGER_CHECKPOINT_PUBLISHER", "A distinct-capable Ed25519 checkpoint publisher is required");
     }
     this.dataDirectory = dataDirectory;

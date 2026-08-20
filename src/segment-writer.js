@@ -3,8 +3,7 @@ import { compressBlock, decompressBlock, ZSTD_PROFILE } from "./compression.js";
 import {
   domainHash,
   publicKeyId,
-  signDomainCommitment,
-  signCommitment,
+  signDomainWithSigner,
   toHex,
 } from "./crypto.js";
 import { canonicalEventBytes, eventHash, validateEvent } from "./event.js";
@@ -91,7 +90,7 @@ export async function writeSegment({
     invariant(Array.isArray(precompressedBlocks) && Array.isArray(blockRecordCounts) && precompressedBlocks.length === blockRecordCounts.length, "BLOCK_PRECOMPRESSED", "precompressedBlocks requires one entry for every explicit block");
   }
   invariant(Number.isSafeInteger(maxRecordBytes) && maxRecordBytes >= blockTargetBytes, "RECORD_LIMIT", "maxRecordBytes must be at least blockTargetBytes");
-  invariant(signer?.algorithm === "ed25519" && signer.privateKey && signer.publicKeyDer instanceof Uint8Array, "SEGMENT_SIGNER", "An Ed25519 signer is required");
+  invariant(signer?.algorithm === "ed25519" && (typeof signer.sign === "function" || signer.privateKey) && signer.publicKeyDer instanceof Uint8Array, "SEGMENT_SIGNER", "An Ed25519 signer is required");
   invariant(signer.keyId === publicKeyId(signer.publicKeyDer), "SEGMENT_SIGNER_ID", "Signer keyId does not match its public key");
   canonicalTimestamp(createdAt, "createdAt");
 
@@ -211,9 +210,7 @@ export async function writeSegment({
     },
   };
   const manifestPayload = encodeCanonical(manifest);
-  const signature = formatVersion === 1
-    ? signCommitment(signer.privateKey, manifestPayload)
-    : signDomainCommitment(signer.privateKey, profile.signatureDomain, manifestPayload);
+  const signature = await signDomainWithSigner(signer, profile.signatureDomain, manifestPayload);
   const signaturePayload = encodeCanonical({
     algorithm: signer.algorithm,
     keyId: signer.keyId,

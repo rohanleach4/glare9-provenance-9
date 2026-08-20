@@ -14,6 +14,8 @@ The local service generates separate development Ed25519 segment-signing and top
 
 Forward segment-key rotation uses `PROVENANCE_SEGMENT_TRUST_BUNDLE_PATH`, pointing to an external approved JSON bundle described in [`docs/G9P-signer-trust-operations-v1.md`](../../docs/G9P-signer-trust-operations-v1.md). Bindings assign old and successor key IDs to exact ledger/epoch/shard/segment ranges. Startup revalidates historical positions, and sealing rejects a current key outside its approved range. Bundle authentication and approval remain external operational responsibilities.
 
+The core writers also accept an asynchronous callback-only Ed25519 signer without access to a private-key object. This is the provider-neutral boundary for KMS, HSM and customer-controlled adapters; see [`docs/G9P-signing-provider-contract-v1.md`](../../docs/G9P-signing-provider-contract-v1.md). The runnable service still loads local or external PKCS#8 files until a deployment-specific adapter is selected and qualified.
+
 For credential rotation, configure the new token first and retained old token second in `PROVENANCE_API_TOKENS`; administration uses the separate `PROVENANCE_ADMIN_TOKENS` set. Certificate/key paths enable TLS 1.3, while a client CA plus `PROVENANCE_TLS_REQUIRE_CLIENT_CERTIFICATE=true` enables mutual TLS. Private keys and credentials remain external ignored secrets. See [`docs/G9P-transport-identity-v1.md`](../../docs/G9P-transport-identity-v1.md).
 
 ## Run

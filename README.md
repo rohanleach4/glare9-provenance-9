@@ -104,6 +104,7 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-release-procedure-v1.md`](./docs/G9P-release-procedure-v1.md) — versioning, SBOM, signing and reproducible source releases
 - [`docs/G9P-licence-governance-candidate-v1.md`](./docs/G9P-licence-governance-candidate-v1.md) — non-granting licence and governance candidate
 - [`docs/G9P-key-identity-protocol-v1.md`](./docs/G9P-key-identity-protocol-v1.md) — key lifecycle and customer-controlled signing candidate
+- [`docs/G9P-signing-provider-contract-v1.md`](./docs/G9P-signing-provider-contract-v1.md) — provider-neutral KMS, HSM and customer-controlled signing boundary
 - [`docs/G9P-transport-identity-v1.md`](./docs/G9P-transport-identity-v1.md) — TLS, mutual TLS and credential rotation profile
 - [`docs/G9P-checkpoint-witness-v1.md`](./docs/G9P-checkpoint-witness-v1.md) — implemented experimental checkpoint, witness and threshold policy
 - [`services/witness/README.md`](./services/witness/README.md) — separately operated reference witness

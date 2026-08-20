@@ -5,7 +5,7 @@ import {
   domainHash,
   importPublicKey,
   publicKeyId,
-  signDomainCommitment,
+  signDomainWithSigner,
   toHex,
   verifyDomainCommitment,
 } from "./crypto.js";
@@ -197,7 +197,7 @@ function descriptorForWrite({
   authorizationPolicy,
   reason,
 }, limits) {
-  invariant(topologyAuthority?.algorithm === "ed25519" && topologyAuthority.privateKey && topologyAuthority.publicKeyDer instanceof Uint8Array, "EPOCH_SIGNER", "An Ed25519 topology authority is required");
+  invariant(topologyAuthority?.algorithm === "ed25519" && (typeof topologyAuthority.sign === "function" || topologyAuthority.privateKey) && topologyAuthority.publicKeyDer instanceof Uint8Array, "EPOCH_SIGNER", "An Ed25519 topology authority is required");
   invariant(topologyAuthority.keyId === publicKeyId(topologyAuthority.publicKeyDer), "EPOCH_SIGNER", "Topology authority keyId does not match its public key");
 
   const descriptor = validateDescriptor({
@@ -255,7 +255,7 @@ export async function writeRoutingEpoch({
     reason,
   }, DEFAULT_LIMITS);
   const descriptorPayload = encodeCanonical(descriptor);
-  const signature = signDomainCommitment(topologyAuthority.privateKey, "routing-epoch-signature-v1", descriptorPayload);
+  const signature = await signDomainWithSigner(topologyAuthority, "routing-epoch-signature-v1", descriptorPayload);
   const signaturePayload = encodeCanonical({
     algorithm: topologyAuthority.algorithm,
     keyId: topologyAuthority.keyId,

@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 
 import { decodeCanonical, encodeCanonical } from "./codec/canonical.js";
-import { domainHash, importPublicKey, publicKeyId, signDomainCommitment, toHex, verifyDomainCommitment } from "./crypto.js";
+import { domainHash, importPublicKey, publicKeyId, signDomainWithSigner, toHex, verifyDomainCommitment } from "./crypto.js";
 import { fail, invariant } from "./errors.js";
 import { encodeFrame, FRAME_TYPES, FrameReader, G9P_MAGIC_V2 } from "./format/framing.js";
 import { writeExclusiveAndPromote } from "./sealed-file.js";
@@ -48,7 +48,7 @@ function signature(value, signer) {
 }
 
 function signerIdentity(signer) {
-  invariant(signer?.algorithm === "ed25519" && signer.privateKey && signer.publicKeyDer instanceof Uint8Array, "ATTESTATION_SIGNER", "An Ed25519 signer is required");
+  invariant(signer?.algorithm === "ed25519" && (typeof signer.sign === "function" || signer.privateKey) && signer.publicKeyDer instanceof Uint8Array, "ATTESTATION_SIGNER", "An Ed25519 signer is required");
   invariant(publicKeyId(signer.publicKeyDer) === signer.keyId, "ATTESTATION_SIGNER", "Signer key ID does not match its public key");
   return { algorithm: signer.algorithm, keyId: signer.keyId, publicKey: Uint8Array.from(signer.publicKeyDer) };
 }
@@ -83,8 +83,8 @@ async function publish({ outputPath, sealedStorage, storageKey, bytes, descripti
   await writeExclusiveAndPromote(outputPath, bytes, { errorCode: "ATTESTATION_WRITE", extensionErrorCode: "ATTESTATION_EXTENSION", description });
 }
 
-function container(frameType, payload, signer, signatureDomain) {
-  const signaturePayload = encodeCanonical({ algorithm: signer.algorithm, keyId: signer.keyId, signature: Uint8Array.from(signDomainCommitment(signer.privateKey, signatureDomain, payload)) });
+async function container(frameType, payload, signer, signatureDomain) {
+  const signaturePayload = encodeCanonical({ algorithm: signer.algorithm, keyId: signer.keyId, signature: Uint8Array.from(await signDomainWithSigner(signer, signatureDomain, payload)) });
   return Buffer.concat([G9P_MAGIC_V2, encodeFrame(frameType, payload), encodeFrame(FRAME_TYPES.signature, signaturePayload), encodeFrame(FRAME_TYPES.end)]);
 }
 
@@ -109,7 +109,7 @@ function trusted(options, keyId, requiredCode) {
 export async function writeCheckpoint({ outputPath, sealedStorage, storageKey, ledgerId, checkpointNumber, previousCheckpointHash = null, routingEpochNumber, routingEpochHash, shardHeads, publisher, createdAt = new Date().toISOString() }) {
   const descriptor = validateCheckpoint({ kind: "g9p-checkpoint", protocolVersion: 1, ledgerId, checkpointNumber, createdAt, previousCheckpointHash, routingEpochNumber, routingEpochHash, shardHeads, publisher: signerIdentity(publisher) }, LIMITS);
   const payload = encodeCanonical(descriptor);
-  const bytes = container(FRAME_TYPES.checkpoint, payload, publisher, "checkpoint-signature-v1");
+  const bytes = await container(FRAME_TYPES.checkpoint, payload, publisher, "checkpoint-signature-v1");
   await publish({ outputPath, sealedStorage, storageKey, bytes, description: "sealed checkpoint" });
   return { ledgerId, checkpointNumber, checkpointHash: toHex(domainHash("checkpoint-v1", payload)), fileHash: toHex(domainHash("checkpoint-file-v1", bytes)), publisherKeyId: publisher.keyId, byteLength: bytes.length };
 }
@@ -146,7 +146,7 @@ export async function writeWitnessReceipt({ outputPath, sealedStorage, storageKe
   const checkpoint = await verifyCheckpointBytes(checkpointBytes, { trustedKeyIds: trustedPublisherKeyIds, requireTrustedSigner: requireTrustedPublisher });
   const receipt = validateWitness({ kind: "g9p-witness-receipt", protocolVersion: 1, ledgerId: checkpoint.ledgerId, checkpointNumber: checkpoint.checkpointNumber, checkpointHash: Uint8Array.from(Buffer.from(checkpoint.checkpointHash, "hex")), checkpointFileHash: Uint8Array.from(Buffer.from(checkpoint.fileHash, "hex")), observedAt, witness: signerIdentity(witness) });
   const payload = encodeCanonical(receipt);
-  const bytes = container(FRAME_TYPES.witness, payload, witness, "witness-signature-v1");
+  const bytes = await container(FRAME_TYPES.witness, payload, witness, "witness-signature-v1");
   await publish({ outputPath, sealedStorage, storageKey, bytes, description: "sealed witness receipt" });
   return { ledgerId: receipt.ledgerId, checkpointNumber: receipt.checkpointNumber, checkpointHash: checkpoint.checkpointHash, receiptHash: toHex(domainHash("witness-receipt-v1", payload)), fileHash: toHex(domainHash("witness-file-v1", bytes)), witnessKeyId: witness.keyId, byteLength: bytes.length };
 }
