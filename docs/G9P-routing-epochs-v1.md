@@ -2,9 +2,9 @@
 
 ## Status
 
-This document specifies the approved logical routing-epoch protocol and the first executable signed epoch-descriptor container. The reference ledger now implements the single-authority transition lifecycle, while the protocol remains experimental and does not represent production authorization approval.
+This document specifies the approved logical routing-epoch protocol and the first executable signed epoch-descriptor container. The reference ledger implements the single-authority transition lifecycle; Candidate protocol status does not by itself represent deployment authorization approval.
 
-Routing protocol version 1 is experimental under the candidate policy in [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid descriptor bytes are frozen for verification, but the stable support lifetime is not approved.
+Routing protocol version 1 is Candidate under [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid descriptor bytes are frozen for verification, while the Stable support lifetime remains a separate approval.
 
 ## Purpose
 

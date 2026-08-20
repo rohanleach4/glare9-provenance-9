@@ -4,7 +4,7 @@
 
 Administrators provision the single-writer reference topology, ignored data directories, filesystem permissions, service identities, metrics credentials, backup targets and the dedicated Workbench-managed outbox. They apply MySQL migration/grants explicitly, maintain separate ingestion and routing-administration credentials and never commit runtime data or secrets.
 
-Before startup, confirm Node/npm versions, empty or previously verified storage, configured shard count compatibility, signer/topology key provenance, lifecycle capacities and exact backup coverage. After startup, require ready status and verify signer/topology identifiers against the approved inventory.
+Before startup, confirm Node/npm versions, the installation manifest and custody mode, empty or previously verified storage, configured shard count compatibility, all three signing identities, lifecycle capacities and exact backup coverage. After startup, require ready status and verify the reported installation and key identifiers against the manifest.
 
 ## Operator responsibilities
 
@@ -31,6 +31,6 @@ Use `G9P-incident-runbooks-v1.md` for key compromise, corrupt/missing storage, w
 
 ## Change and handover record
 
-Every operational change records approver, time, software commit, configuration identity, key IDs, routing epoch, pre/post readiness, verification result and rollback criteria. Handover includes current limitations: no production KMS/HSM, TLS identity layer, checkpoint/witness service, active-active writer or uptime SLA.
+Every operational change records approver, time, software commit, configuration identity, key IDs, routing epoch, pre/post readiness, verification result and rollback criteria. Handover includes the selected custody profile and current limitations: deployment-qualified TLS identity, witness policy, active-active writing and an uptime SLA are not implied by the Foundation release.
 
 This manual consolidates roles; detailed procedures remain authoritative in the linked public documents. It assumes no customer business schema and does not grant production approval.

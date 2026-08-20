@@ -2,7 +2,7 @@
 
 ## Status
 
-This document specifies the implemented experimental protocol. It does not alter segment versions 1 or 2. Checkpoint and witness containers have primary and independent verification plus conformance vectors, but owner/protocol approval remains required before their formats are stable.
+This document specifies the implemented Candidate protocol. It does not alter segment versions 1 or 2. Checkpoint and witness containers have primary and independent verification plus conformance vectors; a published support lifetime and remaining independent review gates are required before Stable promotion.
 
 ## Checkpoint descriptor
 

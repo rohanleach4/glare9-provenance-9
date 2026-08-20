@@ -1,6 +1,8 @@
 # Glare•9 Provenance
 
-Glare•9 Provenance is an experimental, independently verifiable governance evidence ledger. It preserves append-only event history in compressed, signed `.g9p` segments without requiring an application to replace its operational database.
+Glare•9 Provenance is a Foundation-stage, independently verifiable governance evidence ledger. It preserves append-only event history in compressed, signed `.g9p` segments without requiring an application to replace its operational database.
+
+Foundation means the core recording, sealing, recovery and offline-verification path is solid, compatibility-controlled and ready for installation qualification, with room to extend connectors, projections and witnessed finality. It is not a blanket claim that an unqualified deployment is ready for regulated or production evidence; see [`docs/G9P-maturity-policy-v1.md`](./docs/G9P-maturity-policy-v1.md).
 
 The current first iteration can:
 
@@ -33,6 +35,14 @@ npm run test:all
 npm run demo
 ```
 
+Create a protected installed profile:
+
+```bash
+npm run setup
+```
+
+The installer offers self-contained Integrated Custody and optional self-hosted Separated Custody. See [`docs/G9P-installation-v1.md`](./docs/G9P-installation-v1.md).
+
 Verify a segment:
 
 ```bash
@@ -51,7 +61,7 @@ Verify a signed routing-epoch descriptor:
 npm run verify:epoch -- path/to/epoch-000001.g9p [trusted-key-id]
 ```
 
-The implementation now includes an experimental ledger-ingestion service and MySQL outbox connector, but it is not production-ready. Do not use it for production evidence, credentials or signing keys.
+The implementation includes an installable ledger-ingestion service, optional self-hosted separated custody and a MySQL outbox connector. Production reliance requires the live MySQL/TLS, custody, backup and recovery qualification applicable to that installation.
 
 The existing version 1 ingestion endpoint continues to wait for sealed receipts. The stable version 2 accepted-first contract allows active segments to span requests, returns explicit `accepted`, `provisional`, or `sealed` state, and provides authenticated receipt polling without changing the G9P container format. The MySQL connector uses durable `accepted` as the custody-transfer point.
 
@@ -72,8 +82,8 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`Sharding-readme.md`](./Sharding-readme.md) — sharding, segments and checkpoints
 - [`Connector-readme.md`](./Connector-readme.md) — MySQL and future connectors
 - [`Test-readme.md`](./Test-readme.md) — test and assurance strategy
-- [`docs/G9P-format-v1.md`](./docs/G9P-format-v1.md) — experimental byte-level format
-- [`docs/G9P-format-v2.md`](./docs/G9P-format-v2.md) — epoch-aware experimental segment format
+- [`docs/G9P-format-v1.md`](./docs/G9P-format-v1.md) — Candidate byte-level format
+- [`docs/G9P-format-v2.md`](./docs/G9P-format-v2.md) — epoch-aware Candidate segment format
 - [`docs/G9P-routing-epochs-v1.md`](./docs/G9P-routing-epochs-v1.md) — signed routing epochs and forward-only resharding protocol
 - [`docs/G9P-ingestion-receipts-v2.md`](./docs/G9P-ingestion-receipts-v2.md) — stable accepted-first ingestion and receipt-polling contract
 - [`docs/G9P-lifecycle-sizing-v1.md`](./docs/G9P-lifecycle-sizing-v1.md) — measured block, segment and age defaults
@@ -100,19 +110,24 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-format-compatibility-policy-v1.md`](./docs/G9P-format-compatibility-policy-v1.md) — candidate format stability and retained-verification policy
 - [`docs/G9P-conformance-vectors-v1.md`](./docs/G9P-conformance-vectors-v1.md) — language-neutral vectors and separate verifier agreement
 - [`docs/G9P-source-package-policy-v1.md`](./docs/G9P-source-package-policy-v1.md) — maintained language, workspace and package compatibility policy
+- [`docs/G9P-supported-api-v1.md`](./docs/G9P-supported-api-v1.md) — supported JavaScript entry points and SemVer boundary
+- [`docs/G9P-maturity-policy-v1.md`](./docs/G9P-maturity-policy-v1.md) — Foundation software, Candidate formats and deployment qualification
 - [`docs/G9P-privacy-content-policy-v1.md`](./docs/G9P-privacy-content-policy-v1.md) — privacy, retention, deletion-reference and content handling
 - [`docs/G9P-release-procedure-v1.md`](./docs/G9P-release-procedure-v1.md) — versioning, SBOM, signing and reproducible source releases
-- [`docs/G9P-licence-governance-candidate-v1.md`](./docs/G9P-licence-governance-candidate-v1.md) — non-granting licence and governance candidate
+- [`docs/G9P-licence-governance-v1.md`](./docs/G9P-licence-governance-v1.md) — Apache 2.0 licensing, DCO contributions and project governance
 - [`docs/G9P-key-identity-protocol-v1.md`](./docs/G9P-key-identity-protocol-v1.md) — key lifecycle and customer-controlled signing candidate
-- [`docs/G9P-signing-provider-contract-v1.md`](./docs/G9P-signing-provider-contract-v1.md) — provider-neutral KMS, HSM and customer-controlled signing boundary
+- [`docs/G9P-signing-custody-contract-v1.md`](./docs/G9P-signing-custody-contract-v1.md) — self-contained integrated and optional self-hosted separated signing custody
 - [`docs/G9P-transport-identity-v1.md`](./docs/G9P-transport-identity-v1.md) — TLS, mutual TLS and credential rotation profile
-- [`docs/G9P-checkpoint-witness-v1.md`](./docs/G9P-checkpoint-witness-v1.md) — implemented experimental checkpoint, witness and threshold policy
+- [`docs/G9P-checkpoint-witness-v1.md`](./docs/G9P-checkpoint-witness-v1.md) — implemented Candidate checkpoint, witness and threshold policy
 - [`services/witness/README.md`](./services/witness/README.md) — separately operated reference witness
 - [`docs/G9P-mysql-qualification-v1.md`](./docs/G9P-mysql-qualification-v1.md) — Workbench-managed integration and TLS/grant qualification
 - [`docs/G9P-deployment-operations-v1.md`](./docs/G9P-deployment-operations-v1.md) — supported topology, capacity and availability profile
 - [`docs/G9P-observability-v1.md`](./docs/G9P-observability-v1.md) — health, readiness, metrics and alerting
 - [`docs/G9P-incident-runbooks-v1.md`](./docs/G9P-incident-runbooks-v1.md) — evidence-preserving incident procedures
 - [`docs/G9P-operations-manual-v1.md`](./docs/G9P-operations-manual-v1.md) — administrator, operator, verifier and responder manual
+- [`docs/G9P-installation-v1.md`](./docs/G9P-installation-v1.md) — create-only terminal installation and custody profiles
+- [`docs/G9P-non-production-pilot-v1.md`](./docs/G9P-non-production-pilot-v1.md) — automated installation, interruption, backup and restore evidence
+- [`docs/G9P-foundation-readiness-review-2026-08.md`](./docs/G9P-foundation-readiness-review-2026-08.md) — completed foundation evidence and remaining deployment gates
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
-The open-source licence has not yet been selected or granted. Apache 2.0 is the current adoption-first preference, subject to formal approval.
+The open core, specifications and conformance materials are licensed under Apache License 2.0. Glare•9 names and logos remain subject to `TRADEMARKS.md`.

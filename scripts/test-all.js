@@ -6,6 +6,7 @@ const suiteDirectories = [
   "test",
   "packages/connector-contract/test",
   "services/ledger/test",
+  "services/signer/test",
   "connectors/mysql/test",
 ];
 

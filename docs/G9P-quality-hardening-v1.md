@@ -12,7 +12,7 @@ The security- and protocol-critical core under `src/` must maintain at least:
 | Branches | 85% | 92.20% |
 | Functions | 90% | 95.56% |
 
-`npm run test:coverage` uses Node.js 24 native coverage and exits non-zero below any threshold. CI runs this command after the aggregate suite. These are repository-wide floors for the core, not permission to leave a particular cryptographic or parsing branch untested. New critical behavior still requires explicit success, rejection and recovery cases.
+`npm run test:coverage` uses Node.js 24 native coverage and exits non-zero below either gate. The protocol core enforces 95% lines, 85% branches and 90% functions. Installation and custody code separately enforces 85% lines, 70% branches and 75% functions so operational security code cannot be diluted by protocol coverage. CI runs both after the aggregate suite. These are floors, not permission to leave a particular cryptographic, parsing or custody branch untested; new critical behavior still requires explicit success, rejection and recovery cases.
 
 Generated CLI, connector and service orchestration code is not folded into the core percentage merely to change the denominator. Their behavior remains covered by their own unit, integration, contract and fault suites.
 

@@ -87,7 +87,7 @@ Footer
 
 The file extension does not establish validity. Readers must validate magic bytes, structure, commitments, signatures and chain linkage.
 
-The executable experimental format is specified in `docs/G9P-format-v1.md`.
+The executable Candidate format is specified in `docs/G9P-format-v1.md`.
 
 ## Compression
 

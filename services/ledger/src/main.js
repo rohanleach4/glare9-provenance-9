@@ -1,10 +1,38 @@
 import { readFile } from "node:fs/promises";
 
 import { loadLedgerConfig } from "./config.js";
-import { loadExternalSigner, loadOrCreateLocalCheckpointPublisher, loadOrCreateLocalSigner, loadOrCreateLocalTopologyAuthority } from "./key-store.js";
+import { validateInstallationManifest } from "./installation-manifest.js";
+import { loadExternalSigner, loadOrCreateLocalCheckpointPublisher, loadOrCreateLocalSigner, loadOrCreateLocalTopologyAuthority, loadProtectedSigner } from "./key-store.js";
 import { LocalLedger } from "./local-ledger.js";
 import { createLedgerServer } from "./server.js";
+import { loadSocketSigner } from "./socket-signer.js";
 import { acquireWriterLock } from "./writer-lock.js";
+
+async function loadSigningRoles(config) {
+  if (config.custodyMode === "integrated") {
+    const [segment, topology, checkpoint] = await Promise.all([
+      loadProtectedSigner(config.segmentSigningKeyPath, config.keyPassphrasePath),
+      loadProtectedSigner(config.topologySigningKeyPath, config.keyPassphrasePath),
+      loadProtectedSigner(config.checkpointSigningKeyPath, config.keyPassphrasePath),
+    ]);
+    return { segment, topology, checkpoint };
+  }
+  if (config.custodyMode === "separated") {
+    const options = { timeoutMs: config.signerTimeoutMs };
+    const [segment, topology, checkpoint] = await Promise.all([
+      loadSocketSigner(config.signerSocketPath, "segment", options),
+      loadSocketSigner(config.signerSocketPath, "topology", options),
+      loadSocketSigner(config.signerSocketPath, "checkpoint", options),
+    ]);
+    return { segment, topology, checkpoint };
+  }
+  const [segment, topology, checkpoint] = await Promise.all([
+    config.segmentSigningKeyPath === undefined ? loadOrCreateLocalSigner(config.dataDirectory) : loadExternalSigner(config.segmentSigningKeyPath),
+    loadOrCreateLocalTopologyAuthority(config.dataDirectory),
+    loadOrCreateLocalCheckpointPublisher(config.dataDirectory),
+  ]);
+  return { segment, topology, checkpoint };
+}
 
 async function main() {
   const config = loadLedgerConfig();
@@ -12,11 +40,14 @@ async function main() {
   let ledger;
   let service;
   try {
-    const [signer, topologyAuthority, checkpointPublisher] = await Promise.all([
-      config.segmentSigningKeyPath === undefined ? loadOrCreateLocalSigner(config.dataDirectory) : loadExternalSigner(config.segmentSigningKeyPath),
-      loadOrCreateLocalTopologyAuthority(config.dataDirectory),
-      loadOrCreateLocalCheckpointPublisher(config.dataDirectory),
-    ]);
+    const signingRoles = await loadSigningRoles(config);
+    const signer = signingRoles.segment;
+    const topologyAuthority = signingRoles.topology;
+    const checkpointPublisher = signingRoles.checkpoint;
+    const installation = config.installationManifestPath === undefined ? null : validateInstallationManifest(
+      JSON.parse(await readFile(config.installationManifestPath, "utf8")),
+      { config, signers: signingRoles },
+    );
     const segmentTrustBundle = config.segmentTrustBundlePath === undefined
       ? undefined
       : JSON.parse(await readFile(config.segmentTrustBundlePath, "utf8"));
@@ -56,6 +87,8 @@ async function main() {
       signerKeyId: signer.keyId,
       topologyAuthorityKeyId: topologyAuthority.keyId,
       checkpointPublisherKeyId: checkpointPublisher.keyId,
+      installationId: installation?.installationId ?? null,
+      custodyMode: config.custodyMode,
     }));
 
     const stop = async (signal) => {

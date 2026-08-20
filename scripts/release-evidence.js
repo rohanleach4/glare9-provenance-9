@@ -20,6 +20,13 @@ if (run("git", ["status", "--porcelain"]).trim() !== "") throw new Error("Releas
 
 const commit = run("git", ["rev-parse", "HEAD"]).trim();
 const version = JSON.parse(await readFile("package.json", "utf8")).version;
+const releaseTag = `v${version}`;
+const tagsAtCommit = run("git", ["tag", "--points-at", commit]).trim().split("\n").filter(Boolean);
+if (!tagsAtCommit.includes(releaseTag)) throw new Error(`Release evidence requires tag ${releaseTag} at HEAD`);
+if (run("git", ["cat-file", "-t", `refs/tags/${releaseTag}`]).trim() !== "tag") {
+  throw new Error(`Release tag ${releaseTag} must be annotated`);
+}
+run("git", ["verify-tag", releaseTag]);
 const prefix = `glare9-provenance-${version}/`;
 await mkdir(outputDirectory, { recursive: true });
 const tarPath = resolve(outputDirectory, `glare9-provenance-${version}.tar`);
@@ -35,5 +42,5 @@ await writeFile(`${archivePath}.sha256`, `${sha256}  ${basename(archivePath)}\n`
 
 const sbom = await generateSbom();
 await writeFile(resolve(outputDirectory, `glare9-provenance-${version}.cdx.json`), `${JSON.stringify(sbom, null, 2)}\n`);
-await writeFile(resolve(outputDirectory, "release-evidence.json"), `${JSON.stringify({ version, commit, archive: basename(archivePath), sha256 }, null, 2)}\n`);
-process.stdout.write(`${JSON.stringify({ version, commit, archive: archivePath, sha256 })}\n`);
+await writeFile(resolve(outputDirectory, "release-evidence.json"), `${JSON.stringify({ version, commit, releaseTag, archive: basename(archivePath), sha256 }, null, 2)}\n`);
+process.stdout.write(`${JSON.stringify({ version, commit, releaseTag, archive: archivePath, sha256 })}\n`);

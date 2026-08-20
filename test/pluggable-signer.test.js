@@ -97,7 +97,7 @@ test("callback-only authorities sign routing, checkpoints and witness receipts",
   });
 });
 
-test("a provider signature that does not match its public key fails before publication", async () => {
+test("a custody signature that does not match its public key fails before publication", async () => {
   await temporary(async (directory) => {
     const localSigner = generateSigner();
     const signer = { algorithm: localSigner.algorithm, keyId: localSigner.keyId, publicKeyDer: localSigner.publicKeyDer, async sign() { return Buffer.alloc(64); } };

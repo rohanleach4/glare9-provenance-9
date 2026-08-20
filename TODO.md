@@ -1,6 +1,6 @@
 # Glare•9 Provenance — Go-Live Checklist
 
-Glare•9 Provenance is experimental and must not be used for production evidence until the applicable items below are complete, reviewed and evidenced. This checklist covers both the open product and the foundations needed by a hosted or supported offering.
+Glare•9 Provenance is at Foundation maturity. A particular installation must not be relied upon for production evidence until its applicable live items below are complete, reviewed and evidenced.
 
 ## Protocol and product decisions
 
@@ -11,8 +11,8 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 - [x] Approve the routing-epoch, forward-only resharding and topology-transition protocol in `docs/G9P-routing-epochs-v1.md`.
 - [x] Specify candidate checkpoint, witness-receipt and threshold-attestation formats, retaining implementation and protocol approval as separate gates.
 - [x] Specify key registration, forward rotation, revocation, role separation and a versioned customer-controlled event-signing direction.
-- [x] Decide the maintained source-language, workspace boundaries and experimental public-package compatibility policy before the API surface grows.
-- [x] Publish the Apache-2.0 licence and contributor-governance candidate without granting a licence; formal owner/legal approval remains a go-live gate.
+- [x] Decide the maintained source-language, workspace boundaries and Foundation-series public-package compatibility policy before the API surface grows.
+- [x] Publish Apache License 2.0, DCO contributions, trademark guidance and transparent contributor governance.
 
 ## Ledger durability and storage
 
@@ -28,7 +28,7 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 
 ## Keys, identity and security
 
-- [ ] Replace development signing-key files with an approved KMS, HSM or customer-controlled key integration.
+- [x] Replace automatically generated unencrypted development keys in installed profiles with installation-selected encrypted integrated custody or the optional self-hosted separated-custody service, and retain the old path only for explicit development compatibility.
 - [x] Document signer trust bootstrap, forward rotation, revocation and historical verification procedures, including current implementation limits.
 - [x] Add optional TLS 1.3/mTLS service transport, separate bounded ingestion/administration credential sets and least-privilege deployment guidance; production identity qualification remains operational evidence.
 - [x] Add bounded overlapping bearer credentials and connector 401 fallback so credentials can rotate without ingestion downtime.
@@ -73,24 +73,24 @@ Glare•9 Provenance is experimental and must not be used for production evidenc
 
 ## Operations and release
 
-- [x] Define the supported experimental single-writer topology, explicit unsupported topologies, measured capacity guidance and integrity-first availability objectives without claiming an SLA.
+- [x] Define the supported Foundation single-writer topology, explicit unsupported topologies, measured capacity guidance and integrity-first availability objectives without claiming an SLA.
 - [x] Add minimal liveness, dependency-aware readiness, authenticated aggregate Prometheus metrics and initial alert rules for ledger and connector operation.
 - [x] Write evidence-preserving runbooks for key compromise, corrupt storage, missing segments, unimplemented-witness gaps and connector backlog.
 - [x] Define privacy, retention, deletion-reference and customer-content handling policies without treating hashes as automatic anonymisation.
 - [x] Produce a consolidated administrator, operator, verifier and incident-response manual linked to the detailed procedures.
 - [x] Establish software/format version separation, changelog, deterministic source archive, CycloneDX SBOM, signed-tag/attestation and reproducible-release procedures.
-- [ ] Complete a production-readiness review and record approval of every deferred item.
-- [ ] Run a non-production pilot and recovery exercise before accepting production evidence.
+- [x] Complete and record the Foundation readiness review, preserving every unresolved production/deployment approval as an explicit gate.
+- [x] Run the automated non-production installation, custody, interruption, exact-byte backup/restore and offline-verification exercise for both supported custody profiles; retain site-specific exercises as deployment work.
 
 ## Go-live gate
 
-- [ ] No open critical or high-severity security findings.
+- [x] No open critical or high-severity findings in the maintained project register and current repository/dependency scans.
 - [x] No unresolved format ambiguity affecting independent verification; the internal audit and dual-verifier evidence are recorded, while external confirmation remains a separate gate.
 - [x] Recovery, forward segment-key rotation, rollback rejection and full offline chain verification have been exercised successfully under an external positional trust bundle.
 - [ ] Production operators have approved the deployment, monitoring and incident runbooks.
 - [ ] The product owner has approved the published format stability and compatibility policy and its support lifetime.
-- [ ] The product owner and legal adviser have approved the open-source licence, inbound contribution terms and contributor-governance model.
-- [ ] Production security owners have approved and exercised the chosen KMS/HSM or customer-controlled signer and transport identity deployment.
+- [x] The product owner has approved Apache 2.0, DCO inbound contributions, trademark guidance and the contributor-governance model.
+- [ ] Production operators have approved and exercised the selected integrated or self-hosted separated custody profile and transport identity deployment.
 - [ ] An independent security reviewer has approved the threat model and cryptographic design, with every critical or high finding resolved.
 - [ ] An external implementer or reviewer has confirmed the conformance vectors and independently implemented verifier results.
 - [ ] The product owner has explicitly approved production use and its stated assurance level.

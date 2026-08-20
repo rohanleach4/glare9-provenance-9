@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security reporting
+    url: https://github.com/rohanleach4/glare9-provenance/security/advisories/new
+    about: Report suspected vulnerabilities privately without customer data or live secrets.

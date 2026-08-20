@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-This is the public implementation threat model for the experimental Glare•9 Provenance reference system. It covers writers, readers, connectors, sealed storage, recovery state, signing keys, service credentials and hostile `.g9p` input. It is an engineering artifact, not an independent security assessment; external review is a separate go-live gate.
+This is the public implementation threat model for the Foundation Glare•9 Provenance reference system. It covers writers, readers, connectors, sealed storage, recovery state, signing keys, service credentials and hostile `.g9p` input. It is an engineering artifact, not an independent security assessment; external review is a separate go-live gate.
 
 The protected claim is narrow: accepted evidence is durably retained, sealed history is tamper-evident, and conforming readers can detect unsupported mutation, omission or reordering within the evidence they receive. The ledger does not prove that an assertion is true, that an authenticated source was honest, or that an operator supplied complete history.
 
@@ -41,7 +41,7 @@ The current single-node profile does not defend availability against host compro
 | partial sealing or acknowledgement loss | `.g9p.part`, file/directory sync, create-only promotion, durable intake and idempotent retry | physical power-loss guarantees depend on qualified storage |
 | connector outage or uncertain acceptance | leases, identical retry, monotonic receipt reconciliation and dead letters | production-like MySQL failover/TLS qualification remains open |
 | credential theft or replay | separate ingestion/admin credentials, bounded APIs, redacted diagnostics | TLS identity and zero-downtime credential rotation remain open |
-| signing-key theft | external trust bootstrap and forward revocation procedure | development key files must be replaced by approved KMS/HSM integration |
+| signing-key theft | external trust bootstrap and forward revocation procedure | development key files must be replaced by encrypted integrated or self-hosted separated custody |
 | storage replacement or omission | offline verification, exact-byte backup and chain reconstruction | no independent checkpoint/witness service yet |
 | customer-content disclosure | aggregate metrics, diagnostic redaction and schema-neutral connector | privacy/retention/customer-content policy remains open |
 | malicious dependency or build | lockfile, dependency audit, CodeQL and repository scanning | release signing, SBOM and reproducible build procedure remain open |

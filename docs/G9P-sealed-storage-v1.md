@@ -71,4 +71,4 @@ An auditor can therefore copy a sealed object from any backend, transport it ind
 
 Embedded deployments may pass another contract implementation as `sealedStorage` when constructing `LocalLedger`. Tests demonstrate publication, restart reconstruction and idempotent receipt replay with a non-filesystem implementation while local intake and provisional state remain separate.
 
-No network or cloud adapter is bundled yet. A production adapter requires its own durability, consistency, authentication, authorization, encryption, availability, retention and disaster-recovery review. Passing the interface tests alone does not establish that a backend is suitable for production evidence.
+The bundled storage implementation is local and self-contained. Any future self-hosted storage implementation requires its own durability, consistency, authentication, authorization, encryption, availability, retention and disaster-recovery review. Passing the interface tests alone does not establish that a backend is suitable for production evidence.

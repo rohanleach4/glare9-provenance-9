@@ -4,7 +4,7 @@
 
 This document specifies the first executable Glare•9 Provenance container. It exists to make the prototype independently inspectable and testable.
 
-Format version 1 is **experimental** under the candidate policy in [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid bytes are frozen for verification, but the stable support lifetime is not approved. Any permanent byte-level change must use a new version and update the specification, verifiers and conformance vectors together.
+Format version 1 is **Candidate** under [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid bytes are frozen for verification, while the Stable support lifetime remains a separate approval. Any permanent byte-level change must use a new version and update the specification, verifiers and conformance vectors together.
 
 Signed routing-epoch descriptors and epoch-aware version 2 segments use container-version byte 2 with distinct first-frame profiles. They are specified in [`G9P-routing-epochs-v1.md`](./G9P-routing-epochs-v1.md) and [`G9P-format-v2.md`](./G9P-format-v2.md). Existing version 1 segment bytes are unchanged.
 

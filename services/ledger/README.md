@@ -4,17 +4,25 @@ This workspace exposes the authenticated ingestion boundary for database connect
 
 ## Configure
 
+For an installed profile, use the create-only terminal installer rather than composing key paths manually:
+
+```bash
+npm run setup
+```
+
+See [`docs/G9P-installation-v1.md`](../../docs/G9P-installation-v1.md). The manual `.env` flow below remains for development compatibility.
+
 Copy `.env.example` to the ignored `.env` file and set a long random bearer token:
 
 ```bash
 cp services/ledger/.env.example services/ledger/.env
 ```
 
-The local service generates separate development Ed25519 segment-signing and topology-authority keys under its ignored data directory. That key store is not suitable for production. An external Ed25519 PKCS#8 segment key can instead be selected with `PROVENANCE_SEGMENT_SIGNING_KEY_PATH`.
+Development mode generates separate unencrypted Ed25519 segment-signing, topology-authority and checkpoint keys under its ignored data directory. Installed Integrated Custody instead uses three encrypted keys and a pinned installation manifest. An existing unencrypted Ed25519 PKCS#8 segment key remains supported only for explicit development/migration compatibility.
 
 Forward segment-key rotation uses `PROVENANCE_SEGMENT_TRUST_BUNDLE_PATH`, pointing to an external approved JSON bundle described in [`docs/G9P-signer-trust-operations-v1.md`](../../docs/G9P-signer-trust-operations-v1.md). Bindings assign old and successor key IDs to exact ledger/epoch/shard/segment ranges. Startup revalidates historical positions, and sealing rejects a current key outside its approved range. Bundle authentication and approval remain external operational responsibilities.
 
-The core writers also accept an asynchronous callback-only Ed25519 signer without access to a private-key object. This is the provider-neutral boundary for KMS, HSM and customer-controlled adapters; see [`docs/G9P-signing-provider-contract-v1.md`](../../docs/G9P-signing-provider-contract-v1.md). The runnable service still loads local or external PKCS#8 files until a deployment-specific adapter is selected and qualified.
+The core writers also accept an asynchronous callback-only Ed25519 signer without access to a private-key object. This supports the optional self-hosted separated-custody profile without changing sealed bytes; see [`docs/G9P-signing-custody-contract-v1.md`](../../docs/G9P-signing-custody-contract-v1.md). Integrated local custody remains the self-contained default, and no third-party signing service is required or planned.
 
 For credential rotation, configure the new token first and retained old token second in `PROVENANCE_API_TOKENS`; administration uses the separate `PROVENANCE_ADMIN_TOKENS` set. Certificate/key paths enable TLS 1.3, while a client CA plus `PROVENANCE_TLS_REQUIRE_CLIENT_CERTIFICATE=true` enables mutual TLS. Private keys and credentials remain external ignored secrets. See [`docs/G9P-transport-identity-v1.md`](../../docs/G9P-transport-identity-v1.md).
 
@@ -142,9 +150,9 @@ The separately deployable reference witness is documented in [`services/witness/
 
 - Contract version 1 waits for sealing. Version 2 uses polling and does not yet provide push notifications or project witnessed finality into per-event receipts.
 - Local filesystem storage is the only bundled implementation; other adapters require deployment-specific durability and security qualification.
-- The local signing key is not backed by a KMS or HSM.
-- The local topology-authority key is not backed by a KMS, HSM or customer approval policy.
-- The local checkpoint-publisher key is not backed by a KMS, HSM or customer approval policy.
+- Installed Integrated Custody encrypts local key files, but a compromise of the running ledger account may still reach unlocked signing operations.
+- Separated Custody currently uses a local Unix-domain socket and requires the self-hosted signer to be available before new evidence can seal.
+- Automatically generated unencrypted development keys remain available only when `PROVENANCE_CUSTODY_MODE=development` and are not an installed custody profile.
 - Without an external segment trust bundle, existing history is expected to use the current local signer. With a bundle, every historical and next segment position must be explicitly trusted.
 - Transition administration currently uses one local topology-authority key and one bearer credential; threshold/customer authorization is not implemented.
 - Version 1 witness receipts verify checkpoint signatures and configured publisher trust; they do not assert a full independent traversal of referenced segment history.

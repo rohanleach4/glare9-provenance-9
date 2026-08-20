@@ -2,6 +2,7 @@
   "name": "@glare9/provenance-ledger-service",
   "version": "0.1.0-alpha.1",
   "description": "Authenticated ingestion service for Glare•9 Provenance",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "engines": {

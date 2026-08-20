@@ -1,0 +1,34 @@
+name: Design proposal
+description: Propose a feature, connector, format or assurance change.
+title: "proposal: "
+labels: [proposal]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and user value
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and trust impact
+      description: Identify authenticated bytes, public APIs, recovery, privacy, custody and operator effects.
+    validations:
+      required: true
+  - type: dropdown
+    id: independence
+    attributes:
+      label: Self-contained operation
+      options:
+        - Preserved with no new runtime dependency
+        - Preserved through an optional self-hosted component
+        - Needs further design
+    validations:
+      required: true

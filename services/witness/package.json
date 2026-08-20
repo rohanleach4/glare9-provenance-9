@@ -2,6 +2,7 @@
   "name": "@glare9/provenance-witness",
   "version": "0.1.0-alpha.1",
   "description": "Separately administered offline G9P checkpoint witness",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=24.0.0 <25" },

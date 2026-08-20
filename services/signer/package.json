@@ -1,0 +1,11 @@
+{
+  "name": "@glare9/provenance-self-hosted-signer",
+  "version": "0.1.0-alpha.1",
+  "description": "Optional self-hosted signing custody for Glare9 Provenance",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.0.0 <25" },
+  "dependencies": { "@glare9/provenance": "file:../.." },
+  "scripts": { "start": "node --env-file-if-exists=.env src/main.js" }
+}

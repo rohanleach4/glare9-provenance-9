@@ -50,4 +50,4 @@ Verification distinguishes cryptographic signature validity from the external po
 
 The exact root fields are `kind: "g9p-segment-trust-bundle"`, `version: 1`, `bundleId` and `bindings`. Each strictly ordered, non-overlapping binding contains exactly `ledgerId`, `epochNumber`, `shardId`, `firstSegmentNumber`, nullable inclusive `lastSegmentNumber`, lowercase `keyId` and `status`. An open-ended range must be the final binding for that shard stream.
 
-This schema is an experimental service input and may be versioned independently. It is deliberately excluded from sealed format compatibility claims.
+This schema is a Foundation-series service input and may be versioned independently. It is deliberately excluded from sealed format compatibility claims.

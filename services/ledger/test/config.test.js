@@ -93,3 +93,27 @@ test("external segment signer and trust bundle paths are optional resolved confi
   assert.equal(config.segmentSigningKeyPath.endsWith("/keys/successor.pk8"), true);
   assert.equal(config.segmentTrustBundlePath.endsWith("/trust/segments.json"), true);
 });
+
+test("installed custody profiles require complete and non-overlapping configuration", () => {
+  const integrated = loadLedgerConfig({
+    ...baseEnvironment,
+    PROVENANCE_CUSTODY_MODE: "integrated",
+    PROVENANCE_INSTALLATION_MANIFEST_PATH: "installation.json",
+    PROVENANCE_KEY_PASSPHRASE_FILE: "credentials/passphrase",
+    PROVENANCE_SEGMENT_SIGNING_KEY_PATH: "keys/segment.pem",
+    PROVENANCE_TOPOLOGY_SIGNING_KEY_PATH: "keys/topology.pem",
+    PROVENANCE_CHECKPOINT_SIGNING_KEY_PATH: "keys/checkpoint.pem",
+  });
+  assert.equal(integrated.custodyMode, "integrated");
+  assert.throws(() => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_CUSTODY_MODE: "integrated", PROVENANCE_INSTALLATION_MANIFEST_PATH: "installation.json" }), /all three signing-key paths/u);
+
+  const separated = loadLedgerConfig({
+    ...baseEnvironment,
+    PROVENANCE_CUSTODY_MODE: "separated",
+    PROVENANCE_INSTALLATION_MANIFEST_PATH: "installation.json",
+    PROVENANCE_SIGNER_SOCKET_PATH: "run/signer.sock",
+  });
+  assert.equal(separated.custodyMode, "separated");
+  assert.throws(() => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_CUSTODY_MODE: "separated", PROVENANCE_INSTALLATION_MANIFEST_PATH: "installation.json" }), /SIGNER_SOCKET_PATH/u);
+  assert.throws(() => loadLedgerConfig({ ...baseEnvironment, PROVENANCE_CUSTODY_MODE: "separated", PROVENANCE_INSTALLATION_MANIFEST_PATH: "installation.json", PROVENANCE_SIGNER_SOCKET_PATH: "run/signer.sock", PROVENANCE_SEGMENT_SIGNING_KEY_PATH: "key.pem" }), /must not configure local/u);
+});

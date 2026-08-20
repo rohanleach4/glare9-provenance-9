@@ -1,6 +1,6 @@
 # Contributing
 
-Glare•9 Provenance welcomes design discussion and review while its licence and contributor-governance model remain candidates awaiting formal approval. Do not submit code under an assumed licence grant.
+Glare•9 Provenance welcomes design discussion, review, documentation and code contributions under Apache License 2.0. Contributions use the Developer Certificate of Origin 1.1 in `DCO.txt`; no contributor licence agreement is required.
 
 Contributions must preserve schema neutrality, offline verification, deterministic encoding, immutable sealed bytes, bounded hostile-input parsing and MySQL independence. Permanent format changes require a new applicable version, specification updates, language-neutral conformance vectors and agreement across both repository verifiers.
 
@@ -12,4 +12,10 @@ Before proposing a change:
 4. run `npm run test:all`, `npm run test:coverage` and `npm run scan:repository`;
 5. document threat, recovery and operator implications.
 
-No contributor licence agreement or developer certificate of origin is currently approved. Until governance approval, maintainers may review proposals without merging externally contributed code.
+Every commit must carry a sign-off certifying the DCO:
+
+```text
+Signed-off-by: Your Name <your-email@example.com>
+```
+
+Use `git commit -s` to add it. Do not submit code you do not have the right to license. Contributions are public and may be retained in repository history. The governance and brand boundaries are described in `GOVERNANCE.md` and `TRADEMARKS.md`.

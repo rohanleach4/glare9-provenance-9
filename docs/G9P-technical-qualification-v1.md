@@ -2,11 +2,15 @@
 
 ## Scope
 
-The technical campaign groups customer-controlled segment signing, Workbench-managed MySQL behavior, restricted MySQL TLS identity, security findings and production-security approval. Repository automation can validate prerequisites and test behavior, but it cannot manufacture an approved key custodian, a production-like database or a human authorization.
+The technical campaign groups installation-selected custody, Workbench-managed MySQL behavior, restricted MySQL TLS identity, security findings and operator approval. Repository automation can validate prerequisites and test behavior, but it cannot manufacture a production-like database, site-specific recovery result or human authorization.
 
 ## Redacted preflight
 
-`npm run qualification:technical` validates the versioned findings register and, when configured, imports the external Ed25519 PKCS#8 segment key, derives its public key ID and confirms that a `trusted` positional binding exists in the external segment trust bundle. It reports only public key/bundle identifiers and counts.
+`npm run qualification:technical` validates the versioned findings register. With `--ledger-env`, it loads the selected installed custody profile, verifies all three public identities against the installation manifest and reports only the custody mode, installation identifier and public key IDs. Development compatibility may still qualify an external segment key against a positional trust bundle.
+
+```bash
+npm run qualification:technical -- --ledger-env /srv/glare9-provenance/ledger.env
+```
 
 The report records booleans for `MYSQL_INTEGRATION_URL` and `MYSQL_QUALIFICATION_URL`; it never reads their values into output. It records Git commit/cleanliness, open finding counts, prerequisite readiness and `approvalsRecorded: false`. Generated reports belong in an ignored evidence store outside the repository.
 
@@ -25,4 +29,4 @@ Then run `npm run audit:dependencies`, `npm run scan:repository`, `npm run fuzz`
 
 ## Closure rule
 
-The five related TODO gates remain open until the live exercises pass in the named environment, the findings register and external scanner results contain no unresolved critical/high issue, and the production security owner approves the signer custody, trust bundle, TLS identity and evidence record. Presence of a green preflight alone closes none of those gates.
+The live deployment gates remain open until the exercises pass in the named environment, the findings register and current scans contain no unresolved critical/high issue, and the responsible operators approve custody, any trust bundle, TLS identity and the evidence record. Presence of a green preflight alone closes none of those gates.

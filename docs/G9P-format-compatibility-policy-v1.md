@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the published candidate compatibility policy for the experimental G9P format. It records the rules implemented by the repository today. Product-owner approval of a stable assurance claim remains an explicit go-live gate; publication does not silently promote format versions 1 or 2 to production-stable status.
+This is the published compatibility policy for the Candidate G9P formats. It records the rules implemented by the repository today. Product-owner approval of a Stable support lifetime remains a separate promotion gate; Candidate status does not silently claim deployment assurance.
 
 ## Version identities
 
@@ -21,10 +21,10 @@ A reader must validate every applicable axis. It must not infer support for an u
 | Object | Accepted profile | Compatibility obligation |
 |---|---|---|
 | legacy segment | container 1, `HEAD`/`MNF1`, segment format 1 | retained verification support; sealed bytes never rewritten |
-| epoch-aware segment | container 2, `HED2`/`MNF2`, segment format 2 | retained verification support once approved stable |
-| routing epoch | container 2, `RTE1`, routing protocol 1 | retained verification support once approved stable |
-| checkpoint | container 2, `CHK1`, checkpoint protocol 1 | experimental; retained verification support once approved stable |
-| witness receipt | container 2, `WIT1`, witness protocol 1 | experimental; retained verification support once approved stable |
+| epoch-aware segment | container 2, `HED2`/`MNF2`, segment format 2 | Candidate; frozen bytes and retained verification |
+| routing epoch | container 2, `RTE1`, routing protocol 1 | Candidate; frozen bytes and retained verification |
+| checkpoint | container 2, `CHK1`, checkpoint protocol 1 | Candidate; frozen bytes and retained verification |
+| witness receipt | container 2, `WIT1`, witness protocol 1 | Candidate; frozen bytes and retained verification |
 | event | envelope version 1 | unknown future versions rejected before sealing |
 
 Container version 2 is a profile namespace, not a single object grammar. The first frame selects `HED2`, `RTE1`, `CHK1` or `WIT1`; any other profile fails closed.
@@ -42,12 +42,11 @@ Container version 2 is a profile namespace, not a single object grammar. The fir
 
 ## Stability states
 
-- **Experimental:** implementations may evolve, but every permanent change requires a new version and new vectors. No production compatibility promise.
 - **Candidate:** bytes and verification rules are frozen for review; discovered ambiguity is resolved by a new version or published erratum that does not reinterpret valid sealed bytes.
 - **Stable:** the product owner has approved the policy and assurance level; valid objects remain verifiable for the published support lifetime.
 - **Retired for writing:** writers stop emitting the version, while readers retain verification support for the stated lifetime.
 
-Versions 1 and 2 remain experimental pending the final approval gate. This repository nevertheless treats their existing valid sealed bytes as frozen verification history: changes must use a new version rather than silently reinterpret them.
+Segment versions 1 and 2 and their implemented routing, checkpoint and witness profiles are Candidate. Their valid sealed bytes are frozen verification history: changes must use a new version rather than silently reinterpret them. Stable promotion additionally requires a published support lifetime and the remaining independent review gates.
 
 ## Conformance and change procedure
 

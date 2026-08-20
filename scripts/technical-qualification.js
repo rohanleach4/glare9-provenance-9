@@ -5,6 +5,10 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { publicKeyId, validateSegmentTrustBundle } from "../src/index.js";
+import { loadLedgerConfig } from "../services/ledger/src/config.js";
+import { validateInstallationManifest } from "../services/ledger/src/installation-manifest.js";
+import { loadProtectedSigner } from "../services/ledger/src/key-store.js";
+import { loadSocketSigner } from "../services/ledger/src/socket-signer.js";
 
 function exact(value, fields, name) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error(`${name} must be an object`);
@@ -30,6 +34,20 @@ export function validateFindingsRegister(value) {
 }
 
 async function assessSigner(environment) {
+  if (new Set(["integrated", "separated"]).has(environment.PROVENANCE_CUSTODY_MODE)) {
+    try {
+      const config = loadLedgerConfig(environment);
+      const signers = config.custodyMode === "integrated" ? {
+        segment: await loadProtectedSigner(config.segmentSigningKeyPath, config.keyPassphrasePath),
+        topology: await loadProtectedSigner(config.topologySigningKeyPath, config.keyPassphrasePath),
+        checkpoint: await loadProtectedSigner(config.checkpointSigningKeyPath, config.keyPassphrasePath),
+      } : Object.fromEntries(await Promise.all(["segment", "topology", "checkpoint"].map(async (role) => [role, await loadSocketSigner(config.signerSocketPath, role, { timeoutMs: config.signerTimeoutMs })])));
+      const installation = validateInstallationManifest(JSON.parse(await readFile(config.installationManifestPath, "utf8")), { config, signers });
+      return { configured: true, valid: true, reason: null, custodyMode: installation.custodyMode, installationId: installation.installationId, keyIds: Object.fromEntries(Object.entries(signers).map(([role, signer]) => [role, signer.keyId])) };
+    } catch {
+      return { configured: true, valid: false, reason: "invalid-installed-custody" };
+    }
+  }
   const keyPath = environment.PROVENANCE_SEGMENT_SIGNING_KEY_PATH;
   const bundlePath = environment.PROVENANCE_SEGMENT_TRUST_BUNDLE_PATH;
   if (keyPath === undefined && bundlePath === undefined) return { configured: false, valid: false, reason: "not-configured" };
@@ -70,14 +88,26 @@ export async function assessTechnicalQualification({ environment = process.env, 
   };
 }
 
+function argumentsFrom(argv) {
+  const options = {};
+  for (let index = 0; index < argv.length; index += 1) {
+    const name = argv[index];
+    if (!new Set(["--ledger-env", "--output"]).has(name) || argv[index + 1] === undefined) throw new Error("Use --ledger-env <path> and optional --output <path>");
+    options[name === "--ledger-env" ? "ledgerEnvironmentPath" : "outputPath"] = argv[index += 1];
+  }
+  return options;
+}
+
 async function main() {
+  const options = argumentsFrom(process.argv.slice(2));
+  if (options.ledgerEnvironmentPath !== undefined) process.loadEnvFile(resolve(options.ledgerEnvironmentPath));
   const findingsRegister = JSON.parse(await readFile(resolve("qualification/security-findings.json"), "utf8"));
   const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const clean = execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim() === "";
   const report = await assessTechnicalQualification({ findingsRegister, commit, clean });
   const output = `${JSON.stringify(report, null, 2)}\n`;
-  if (process.argv[2] === undefined) process.stdout.write(output);
-  else await writeFile(resolve(process.argv[2]), output, { flag: "wx" });
+  if (options.outputPath === undefined) process.stdout.write(output);
+  else await writeFile(resolve(options.outputPath), output, { flag: "wx", mode: 0o600 });
 }
 
 if (process.argv[1] !== undefined && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {

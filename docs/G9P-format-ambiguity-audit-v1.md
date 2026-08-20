@@ -2,7 +2,7 @@
 
 ## Result
 
-No unresolved byte-level or authenticated-meaning ambiguity was identified in the implemented experimental segment v1, segment v2, routing epoch v1, checkpoint v1 or witness receipt v1 profiles on 2026-07-30. This is a repository engineering finding, not a substitute for the separately required external implementer and independent cryptographic review.
+No unresolved byte-level or authenticated-meaning ambiguity was identified in the implemented Candidate segment v1, segment v2, routing epoch v1, checkpoint v1 or witness receipt v1 profiles on 2026-07-30. This is a repository engineering finding, not a substitute for the separately required external implementer and independent cryptographic review.
 
 ## Method
 

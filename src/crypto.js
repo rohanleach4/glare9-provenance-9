@@ -80,6 +80,9 @@ export function validateSigner(signer, code = "SIGNER_IDENTITY") {
   invariant(signer.publicKeyDer instanceof Uint8Array, code, "Signer publicKeyDer must contain an Ed25519 SPKI public key");
   invariant(typeof signer.keyId === "string" && signer.keyId === publicKeyId(signer.publicKeyDer), code, "Signer keyId does not match its public key");
   invariant(typeof signer.sign === "function" || signer.privateKey, code, "Signer must provide an asynchronous sign operation or a local private key");
+  let publicKey;
+  try { publicKey = importPublicKey(signer.publicKeyDer); } catch { invariant(false, code, "Signer publicKeyDer is not an importable Ed25519 public key"); }
+  invariant(publicKey.asymmetricKeyType === "ed25519", code, "Signer publicKeyDer is not an Ed25519 public key");
   return signer;
 }
 

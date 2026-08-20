@@ -11,7 +11,7 @@ Preserve evidence before repair. Record incident time, software/configuration id
 3. Determine compromise window from external key/audit evidence; embedded keys alone do not establish trust.
 4. Rotate forward under the approved trust procedure and record revocation effective time externally.
 5. Reverify pre-window, window and post-rotation history separately.
-6. The external positional segment trust bundle supports forward producer rotation and revoked-position rejection, but it is not an in-ledger registration authority or approved KMS/HSM. Escalate until the external bundle, custody system and compromise boundary are independently approved.
+6. The external positional segment trust bundle supports forward producer rotation and revoked-position rejection, but it is not an in-ledger registration authority. Escalate until the bundle, selected integrated or self-hosted custody profile and compromise boundary are independently approved for the deployment.
 
 ## Corrupt storage
 

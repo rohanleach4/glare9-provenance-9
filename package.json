@@ -2,6 +2,7 @@
   "name": "@glare9/provenance",
   "version": "0.1.0-alpha.1",
   "description": "Open, independently verifiable governance evidence ledger",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -10,7 +11,12 @@
     "connectors/*"
   ],
   "main": "./src/index.js",
-  "exports": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./verify": "./src/verify.js",
+    "./write": "./src/write.js",
+    "./custody": "./src/custody.js"
+  },
   "bin": {
     "g9p": "./src/cli/g9p.js"
   },
@@ -32,15 +38,21 @@
     "conformance:test": "node --test test/conformance.test.js",
     "release:evidence": "node scripts/release-evidence.js",
     "qualification:technical": "node scripts/technical-qualification.js",
+    "qualification:pilot": "node scripts/qualification-pilot.js",
     "sbom": "node scripts/generate-sbom.js",
     "scan:repository": "node scripts/security-scan.js",
     "audit:dependencies": "npm audit --omit=dev --audit-level=high",
+    "setup": "node scripts/setup.js",
+    "start:installed": "node scripts/run-installed.js",
     "start:ledger": "npm run start --workspace=@glare9/provenance-ledger-service",
+    "start:signer": "npm run start --workspace=@glare9/provenance-self-hosted-signer",
     "start:witness": "npm run start --workspace=@glare9/provenance-witness",
     "start:connector:mysql": "npm run start --workspace=@glare9/provenance-connector-mysql",
     "test": "node --test test/*.test.js",
     "test:all": "node scripts/test-all.js",
-    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=95 --test-coverage-branches=85 --test-coverage-functions=90 test/*.test.js",
+    "test:coverage": "npm run test:coverage:core && npm run test:coverage:custody",
+    "test:coverage:core": "node --test --experimental-test-coverage --test-coverage-include='src/**/*.js' --test-coverage-include='tools/independent-verifier/verify.js' --test-coverage-lines=95 --test-coverage-branches=85 --test-coverage-functions=90 test/*.test.js",
+    "test:coverage:custody": "node --test --experimental-test-coverage --test-coverage-include='scripts/setup.js' --test-coverage-include='scripts/technical-qualification.js' --test-coverage-include='scripts/qualification-pilot.js' --test-coverage-include='services/ledger/src/config.js' --test-coverage-include='services/ledger/src/installation-manifest.js' --test-coverage-include='services/ledger/src/key-store.js' --test-coverage-include='services/ledger/src/socket-signer.js' --test-coverage-include='services/signer/src/*.js' --test-coverage-lines=85 --test-coverage-branches=70 --test-coverage-functions=75 test/setup.test.js test/technical-qualification.test.js services/ledger/test/config.test.js services/ledger/test/key-store.test.js services/signer/test/*.test.js",
     "fuzz": "node --test test/fuzz.test.js"
   }
 }

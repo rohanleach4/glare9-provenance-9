@@ -2,7 +2,7 @@
 
 ## Supported reference topology
 
-The current experimental implementation supports one authoritative ledger-service process using the bundled local-filesystem sealed-storage adapter, plus zero or more separately deployed connectors. A MySQL connector uses only its dedicated transactional outbox on a Workbench-administered MySQL server. Readers and offline verifiers open copied sealed `.g9p` objects read-only.
+The Foundation implementation supports one authoritative ledger-service process using the bundled local-filesystem sealed-storage adapter, plus zero or more separately deployed connectors and the optional self-hosted custody signer. A MySQL connector uses only its dedicated transactional outbox on a Workbench-administered MySQL server. Readers and offline verifiers open copied sealed `.g9p` objects read-only.
 
 The reference `start:ledger` process enforces this topology with a create-only writer lock in its data directory. It never automatically steals an existing lock. Embedded users of `LocalLedger` must supply equivalent exclusive ownership because the library façade does not assume control of the host process lifecycle.
 
@@ -32,7 +32,7 @@ The measured workstation baseline achieved about 22 crash-safe accepted events/s
 
 ## Availability objectives
 
-The experimental single-node profile has no uptime SLA and permits planned downtime. Its priorities are:
+The Foundation single-node profile has no uptime SLA and permits planned downtime. Its priorities are:
 
 1. never acknowledge `accepted` before durable intake completes;
 2. fail closed on unverified history, corrupt recovery state or routing ambiguity;

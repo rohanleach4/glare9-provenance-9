@@ -4,7 +4,7 @@
 
 Software uses Semantic Versioning and every workspace version must match the root. G9P format/protocol versions are independent. A release updates `CHANGELOG.md`, specifications, conformance vectors and migration notes as applicable, then passes aggregate tests, coverage, fuzzing, repository scan and production dependency audit from a clean commit.
 
-All packages remain private during the experimental series. The release unit is a source archive plus checksums, CycloneDX SBOM and provenance evidence; registry publication requires a separately approved package/licence decision.
+All packages remain registry-private during the Foundation source-release series. The release unit is a source archive plus checksums, CycloneDX SBOM and provenance evidence; registry publication requires a separately approved public-package decision.
 
 ## Reproducibility
 
@@ -12,10 +12,10 @@ All packages remain private during the experimental series. The release unit is 
 
 ## Signing and provenance
 
-The release tag must be an annotated tag signed by an approved maintainer SSH or GPG key. GitHub release assets must use the exact locally verified checksum. GitHub artifact attestations or an equivalent Sigstore-compatible provenance statement must bind the source commit, workflow identity, archive, checksum and SBOM. Signing keys must not be stored in the repository or ordinary workflow variables.
+The release tag must be an annotated tag signed by an approved maintainer SSH or GPG key held under Glare•9-controlled local custody. Release assets must use the exact locally verified checksum. The signed tag, deterministic source archive, checksum, SBOM and `release-evidence.json` bind the release version to its source commit without requiring a hosted signing or attestation service. Signing keys must not be stored in the repository or ordinary workflow variables.
 
 Two-person review confirms version, changelog, clean status, tag identity, test evidence, dependency findings, SBOM, reproducibility result and asset hashes. Revocation never rewrites an old release; publish a security advisory and a new signed release.
 
 ## Deferred approval
 
-Release signing identities, public package names, support lifetime and licence remain owner/governance decisions. This procedure establishes the technical evidence path without claiming those approvals.
+Apache License 2.0, DCO inbound contributions and the trademark policy are approved for the source release. Release signing identities, public package names and the support lifetime remain owner/governance decisions. This procedure establishes the technical evidence path without claiming those remaining approvals.

@@ -3,7 +3,7 @@ import {
   createPublicKey,
   generateKeyPairSync,
 } from "node:crypto";
-import { mkdir, open, readFile } from "node:fs/promises";
+import { mkdir, open, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 import { publicKeyId } from "@glare9/provenance";
@@ -18,9 +18,33 @@ async function writeExclusive(path, bytes, mode) {
   }
 }
 
-async function loadSigner(privateKeyPath) {
+function keyError(code, message, cause) {
+  const error = new Error(message, cause === undefined ? undefined : { cause });
+  error.code = code;
+  return error;
+}
+
+export async function readProtectedPassphrase(passphrasePath) {
+  const details = await stat(passphrasePath);
+  if (!details.isFile()) throw keyError("KEY_PASSPHRASE_FILE", "Signing-key passphrase path must identify a regular file");
+  if (process.platform !== "win32" && (details.mode & 0o077) !== 0) {
+    throw keyError("KEY_PASSPHRASE_PERMISSIONS", "Signing-key passphrase file must not be accessible by group or other users");
+  }
+  const bytes = await readFile(passphrasePath);
+  if (bytes.byteLength < 32 || bytes.byteLength > 4096) throw keyError("KEY_PASSPHRASE_LENGTH", "Signing-key passphrase must contain between 32 and 4,096 bytes");
+  return bytes;
+}
+
+export async function loadSignerFile(privateKeyPath, { passphrase } = {}) {
   const privateKeyDer = await readFile(privateKeyPath);
-  const privateKey = createPrivateKey({ key: privateKeyDer, format: "der", type: "pkcs8" });
+  let privateKey;
+  try {
+    privateKey = privateKeyDer.subarray(0, 27).toString("ascii").startsWith("-----BEGIN")
+      ? createPrivateKey({ key: privateKeyDer, format: "pem", passphrase })
+      : createPrivateKey({ key: privateKeyDer, format: "der", type: "pkcs8", passphrase });
+  } catch (cause) {
+    throw keyError("KEY_LOAD", "Signing key could not be decrypted or imported", cause);
+  }
   const publicKey = createPublicKey(privateKey);
   const publicKeyDer = Buffer.from(publicKey.export({ format: "der", type: "spki" }));
   return {
@@ -33,7 +57,25 @@ async function loadSigner(privateKeyPath) {
 }
 
 export function loadExternalSigner(privateKeyPath) {
-  return loadSigner(privateKeyPath);
+  return loadSignerFile(privateKeyPath);
+}
+
+export async function loadProtectedSigner(privateKeyPath, passphrasePath) {
+  return loadSignerFile(privateKeyPath, { passphrase: await readProtectedPassphrase(passphrasePath) });
+}
+
+export async function createEncryptedSigner(keyDirectory, name, passphrase) {
+  if (!(passphrase instanceof Uint8Array) || passphrase.byteLength < 32) throw keyError("KEY_PASSPHRASE_LENGTH", "Signing-key passphrase must contain at least 32 bytes");
+  await mkdir(keyDirectory, { recursive: true, mode: 0o700 });
+  const privateKeyPath = join(keyDirectory, `${name}.pem`);
+  const publicKeyPath = join(keyDirectory, `${name}.spki`);
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const privateKeyPem = Buffer.from(privateKey.export({ format: "pem", type: "pkcs8", cipher: "aes-256-cbc", passphrase: Buffer.from(passphrase) }));
+  const publicKeyDer = Buffer.from(publicKey.export({ format: "der", type: "spki" }));
+  await writeExclusive(privateKeyPath, privateKeyPem, 0o600);
+  await writeExclusive(publicKeyPath, publicKeyDer, 0o644);
+  const signer = await loadSignerFile(privateKeyPath, { passphrase });
+  return { signer, privateKeyPath, publicKeyPath };
 }
 
 async function loadOrCreateNamedSigner(dataDirectory, name) {
@@ -43,7 +85,7 @@ async function loadOrCreateNamedSigner(dataDirectory, name) {
   await mkdir(keyDirectory, { recursive: true, mode: 0o700 });
 
   try {
-    return await loadSigner(privateKeyPath);
+    return await loadSignerFile(privateKeyPath);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
@@ -59,7 +101,7 @@ async function loadOrCreateNamedSigner(dataDirectory, name) {
     if (error.code !== "EEXIST") throw error;
   }
 
-  return loadSigner(privateKeyPath);
+  return loadSignerFile(privateKeyPath);
 }
 
 export function loadOrCreateLocalSigner(dataDirectory) {
