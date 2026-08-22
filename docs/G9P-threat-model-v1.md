@@ -40,11 +40,11 @@ The current single-node profile does not defend availability against host compro
 | parser crash or differential interpretation | bounded fuzz/property tests and shared conformance vectors with a separate verifier | more languages and independent fuzzing remain desirable |
 | partial sealing or acknowledgement loss | `.g9p.part`, file/directory sync, create-only promotion, durable intake and idempotent retry | physical power-loss guarantees depend on qualified storage |
 | connector outage or uncertain acceptance | leases, identical retry, monotonic receipt reconciliation and dead letters | production-like MySQL failover/TLS qualification remains open |
-| credential theft or replay | separate ingestion/admin credentials, bounded APIs, redacted diagnostics | TLS identity and zero-downtime credential rotation remain open |
-| signing-key theft | external trust bootstrap and forward revocation procedure | development key files must be replaced by encrypted integrated or self-hosted separated custody |
-| storage replacement or omission | offline verification, exact-byte backup and chain reconstruction | no independent checkpoint/witness service yet |
-| customer-content disclosure | aggregate metrics, diagnostic redaction and schema-neutral connector | privacy/retention/customer-content policy remains open |
-| malicious dependency or build | lockfile, dependency audit, CodeQL and repository scanning | release signing, SBOM and reproducible build procedure remain open |
+| credential theft or replay | separate ingestion/admin credentials, bounded APIs, redacted diagnostics, TLS 1.3/mTLS and overlapping credential support | real deployment identity issuance, rotation and operator exercise remain open |
+| signing-key theft | encrypted integrated custody, optional self-hosted separated custody, external trust bootstrap and forward revocation procedure | a compromised service account/host can still reach signing; site-specific custody exercise remains open |
+| storage replacement or omission | offline verification, exact-byte backup, chain reconstruction, checkpoints and separately runnable reference witness | independently administered witness coverage and retained trusted heads remain deployment policy |
+| customer-content disclosure | aggregate metrics, diagnostic redaction, schema-neutral connector and published privacy/content policy | deployment retention, access and lawful-basis decisions remain operator responsibilities |
+| malicious dependency or build | lockfile, dependency audit, CodeQL, repository scanning, SBOM and reproducible signed-release procedure | the first public signed release and its two-person evidence review have not occurred |
 
 ## Trust decisions a verifier must make
 

@@ -46,7 +46,7 @@ Container version 2 is a profile namespace, not a single object grammar. The fir
 - **Stable:** the product owner has approved the policy and assurance level; valid objects remain verifiable for the published support lifetime.
 - **Retired for writing:** writers stop emitting the version, while readers retain verification support for the stated lifetime.
 
-Segment versions 1 and 2 and their implemented routing, checkpoint and witness profiles are Candidate. Their valid sealed bytes are frozen verification history: changes must use a new version rather than silently reinterpret them. Stable promotion additionally requires a published support lifetime and the remaining independent review gates.
+Segment versions 1 and 2 and their implemented routing, checkpoint and witness profiles are Candidate. Their valid sealed bytes are frozen verification history: changes must use a new version rather than silently reinterpret them. Stable promotion additionally requires product-owner approval of the proposed support lifetime in `G9P-format-support-lifetime-proposal-v1.md` and the remaining independent review gates.
 
 ## Conformance and change procedure
 

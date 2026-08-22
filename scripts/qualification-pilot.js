@@ -39,7 +39,7 @@ function failOnce(stageName) {
   };
 }
 
-async function configuredRoles(result) {
+export async function configuredRoles(result) {
   const ledgerEnvironment = parseEnvironment(await readFile(result.ledgerEnvironmentPath, "utf8"));
   const config = loadLedgerConfig(ledgerEnvironment);
   let server = null;
@@ -55,6 +55,7 @@ async function configuredRoles(result) {
     const signerConfig = loadSignerConfig(signerEnvironment);
     const passphrase = await readProtectedPassphrase(signerConfig.passphrasePath);
     const local = Object.fromEntries(await Promise.all(Object.entries(signerConfig.keyPaths).map(async ([role, path]) => [role, await loadCustodySigner(path, passphrase)])));
+    passphrase.fill(0);
     server = createSignerServer({ socketPath: signerConfig.socketPath, socketMode: signerConfig.socketMode, signers: local });
     await server.listen();
     signers = Object.fromEntries(await Promise.all(["segment", "topology", "checkpoint"].map(async (role) => [role, await loadSocketSigner(config.signerSocketPath, role)])));

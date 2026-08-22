@@ -103,11 +103,13 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-format-ambiguity-audit-v1.md`](./docs/G9P-format-ambiguity-audit-v1.md) — dual-verifier authenticated-meaning audit
 - [`docs/G9P-technical-qualification-v1.md`](./docs/G9P-technical-qualification-v1.md) — redacted signer, MySQL/TLS and security qualification evidence
 - [`docs/G9P-independent-review-response-2026-07.md`](./docs/G9P-independent-review-response-2026-07.md) — disposition of external agent review findings
+- [`docs/G9P-independent-review-guide-v1.md`](./docs/G9P-independent-review-guide-v1.md) — reproducible community security and external-verifier review route
 - [`docs/G9P-development-ci-v1.md`](./docs/G9P-development-ci-v1.md) — supported runtime and automated CI/security checks
 - [`docs/G9P-quality-hardening-v1.md`](./docs/G9P-quality-hardening-v1.md) — enforced coverage, property testing and bounded fuzzing
 - [`docs/G9P-performance-baseline-v1.md`](./docs/G9P-performance-baseline-v1.md) — end-to-end performance harness and measured baseline
 - [`docs/G9P-threat-model-v1.md`](./docs/G9P-threat-model-v1.md) — implementation trust boundaries, controls and residual risks
 - [`docs/G9P-format-compatibility-policy-v1.md`](./docs/G9P-format-compatibility-policy-v1.md) — candidate format stability and retained-verification policy
+- [`docs/G9P-format-support-lifetime-proposal-v1.md`](./docs/G9P-format-support-lifetime-proposal-v1.md) — proposed ten-year maintained-verification commitment
 - [`docs/G9P-conformance-vectors-v1.md`](./docs/G9P-conformance-vectors-v1.md) — language-neutral vectors and separate verifier agreement
 - [`docs/G9P-source-package-policy-v1.md`](./docs/G9P-source-package-policy-v1.md) — maintained language, workspace and package compatibility policy
 - [`docs/G9P-supported-api-v1.md`](./docs/G9P-supported-api-v1.md) — supported JavaScript entry points and SemVer boundary
@@ -127,7 +129,9 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-operations-manual-v1.md`](./docs/G9P-operations-manual-v1.md) — administrator, operator, verifier and responder manual
 - [`docs/G9P-installation-v1.md`](./docs/G9P-installation-v1.md) — create-only terminal installation and custody profiles
 - [`docs/G9P-non-production-pilot-v1.md`](./docs/G9P-non-production-pilot-v1.md) — automated installation, interruption, backup and restore evidence
+- [`docs/G9P-non-production-operations-qualification-v1.md`](./docs/G9P-non-production-operations-qualification-v1.md) — mutual-TLS, readiness, metrics, ingestion and checkpoint exercise
 - [`docs/G9P-foundation-readiness-review-2026-08.md`](./docs/G9P-foundation-readiness-review-2026-08.md) — completed foundation evidence and remaining deployment gates
+- [`docs/G9P-readiness-bulletin-2026-08-22.md`](./docs/G9P-readiness-bulletin-2026-08-22.md) — latest completed work and remaining one-sentence gates
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open core, specifications and conformance materials are licensed under Apache License 2.0. Glare•9 names and logos remain subject to `TRADEMARKS.md`.

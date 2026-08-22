@@ -71,6 +71,7 @@ Run the disposable reference exercise after installation changes:
 
 ```bash
 npm run qualification:pilot
+npm run qualification:operations
 ```
 
-It creates no persistent operational installation and reports its limitations explicitly.
+The first command exercises interruption, recovery and exact-byte backup/restore. The second requires a local `openssl` executable and exercises both installed custody profiles through mutual TLS, readiness, authenticated metrics, sealed ingestion and checkpoint publication. They create no persistent operational installation and report their limitations explicitly.

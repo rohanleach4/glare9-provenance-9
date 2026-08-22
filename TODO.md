@@ -13,6 +13,7 @@ Glare•9 Provenance is at Foundation maturity. A particular installation must n
 - [x] Specify key registration, forward rotation, revocation, role separation and a versioned customer-controlled event-signing direction.
 - [x] Decide the maintained source-language, workspace boundaries and Foundation-series public-package compatibility policy before the API surface grows.
 - [x] Publish Apache License 2.0, DCO contributions, trademark guidance and transparent contributor governance.
+- [x] Publish a concrete ten-year maintained-verification support-lifetime proposal for product-owner approval.
 
 ## Ledger durability and storage
 
@@ -81,6 +82,7 @@ Glare•9 Provenance is at Foundation maturity. A particular installation must n
 - [x] Establish software/format version separation, changelog, deterministic source archive, CycloneDX SBOM, signed-tag/attestation and reproducible-release procedures.
 - [x] Complete and record the Foundation readiness review, preserving every unresolved production/deployment approval as an explicit gate.
 - [x] Run the automated non-production installation, custody, interruption, exact-byte backup/restore and offline-verification exercise for both supported custody profiles; retain site-specific exercises as deployment work.
+- [x] Run both installed custody profiles through disposable mutual TLS 1.3, client-certificate enforcement, readiness, authenticated metrics, sealed ingestion and checkpoint publication; retain real identity and operator approval as deployment gates.
 
 ## Go-live gate
 

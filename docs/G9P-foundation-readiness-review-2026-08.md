@@ -8,6 +8,7 @@ Glare•9 Provenance meets the project definition of **Foundation** maturity: th
 
 - The terminal installer creates either encrypted Integrated Custody or optional self-hosted Separated Custody, pins three public signing identities in an installation manifest and requires no third-party runtime service.
 - Both custody profiles pass an automated non-production exercise covering installation, accepted-event persistence, injected sealing interruption, restart, exact-byte backup and restore, receipt reconstruction and offline verification.
+- Both custody profiles pass a disposable mutual-TLS 1.3 operations exercise covering client identity enforcement, readiness, authenticated metrics, sealed ingestion and checkpoint publication.
 - The supported JavaScript entry points and compatibility boundary are explicit, while internal modules remain outside the public API commitment.
 - Apache License 2.0, DCO inbound contributions, trademark guidance, contributor governance, security reporting and support boundaries are published.
 - Core and custody coverage gates, aggregate tests, bounded fuzzing, repository scanning and production-dependency auditing are automated.
@@ -25,3 +26,5 @@ Glare•9 Provenance meets the project definition of **Foundation** maturity: th
 - Record explicit product-owner approval before claiming production-use assurance.
 
 These gates are deliberately visible in `TODO.md`. Lack of funds for legal or external review does not prevent an Apache 2.0 source release, but no unavailable review will be implied or fabricated.
+
+The ten-year maintained-verification proposal in `G9P-format-support-lifetime-proposal-v1.md` is ready for product-owner decision. `G9P-independent-review-guide-v1.md` provides a public, reproducible route for community security review and external verifier confirmation without making either review a paid or legal-release prerequisite.

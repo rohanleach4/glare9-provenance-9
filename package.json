@@ -39,6 +39,7 @@
     "release:evidence": "node scripts/release-evidence.js",
     "qualification:technical": "node scripts/technical-qualification.js",
     "qualification:pilot": "node scripts/qualification-pilot.js",
+    "qualification:operations": "node scripts/qualification-operations.js",
     "sbom": "node scripts/generate-sbom.js",
     "scan:repository": "node scripts/security-scan.js",
     "audit:dependencies": "npm audit --omit=dev --audit-level=high",
