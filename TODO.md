@@ -13,7 +13,7 @@ Glare•9 Provenance is at Foundation maturity. A particular installation must n
 - [x] Specify key registration, forward rotation, revocation, role separation and a versioned customer-controlled event-signing direction.
 - [x] Decide the maintained source-language, workspace boundaries and Foundation-series public-package compatibility policy before the API surface grows.
 - [x] Publish Apache License 2.0, DCO contributions, trademark guidance and transparent contributor governance.
-- [x] Publish a concrete ten-year maintained-verification support-lifetime proposal for product-owner approval.
+- [x] Publish and approve the ten-year maintained-verification support lifetime for future Stable profiles.
 
 ## Ledger durability and storage
 
@@ -90,7 +90,7 @@ Glare•9 Provenance is at Foundation maturity. A particular installation must n
 - [x] No unresolved format ambiguity affecting independent verification; the internal audit and dual-verifier evidence are recorded, while external confirmation remains a separate gate.
 - [x] Recovery, forward segment-key rotation, rollback rejection and full offline chain verification have been exercised successfully under an external positional trust bundle.
 - [ ] Production operators have approved the deployment, monitoring and incident runbooks.
-- [ ] The product owner has approved the published format stability and compatibility policy and its support lifetime.
+- [x] The product owner has approved the published format stability and compatibility policy and its ten-year maintained-verification lifetime.
 - [x] The product owner has approved Apache 2.0, DCO inbound contributions, trademark guidance and the contributor-governance model.
 - [ ] Production operators have approved and exercised the selected integrated or self-hosted separated custody profile and transport identity deployment.
 - [ ] An independent security reviewer has approved the threat model and cryptographic design, with every critical or high finding resolved.

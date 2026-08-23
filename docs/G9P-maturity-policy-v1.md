@@ -16,4 +16,4 @@ Foundation does not claim that every deployment is production-qualified. An oper
 
 A deployment may describe itself as “qualified for production evidence” only after its named operators record the applicable live database/TLS, custody, backup, recovery, monitoring and incident exercises and resolve critical/high findings. The open project will not infer deployment assurance merely from successful installation.
 
-The Candidate formats become Stable only when the product owner publishes a support lifetime and the remaining independent review gates are satisfied. Until then their bytes remain frozen and retained by the verifiers, but no regulated assurance or service-level promise is implied.
+The product owner has published the ten-year maintained-verification lifetime required for Stable profiles. The Candidate formats become Stable only when the remaining independent review gates are satisfied. Until then their bytes remain frozen and retained by the verifiers, but no regulated assurance or service-level promise is implied.

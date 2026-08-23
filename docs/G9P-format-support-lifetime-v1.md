@@ -1,10 +1,10 @@
-# G9P format support lifetime proposal v1
+# G9P format support lifetime v1
 
-## Proposed commitment
+## Approved commitment
 
 When a G9P evidence profile is promoted from Candidate to Stable, Glare•9 Provenance will retain read-only verification support in the maintained open-source verifier for at least **ten years after the last Glare•9 Provenance release capable of writing that profile**.
 
-The following rules are proposed:
+The commitment is governed by these rules:
 
 1. A Stable profile receives at least 24 months' public notice before becoming Retired for Writing.
 2. Retirement for writing does not shorten its ten-year maintained-verification period.
@@ -17,6 +17,6 @@ The following rules are proposed:
 
 This is a format-compatibility and maintained-source commitment, not a warranty, service-level agreement, hosted verification promise or obligation to support every future operating system/runtime. The project may require a supported runtime or publish a portable archived verifier environment while keeping the format and verification algorithm available.
 
-## Approval state
+## Approval
 
-This is the recommended owner decision because governance evidence may need to outlive the system that created it. It remains a proposal until the product owner explicitly approves it; Candidate status and the current Foundation source release do not silently activate the ten-year commitment.
+The product owner approved this commitment on 23 August 2026. Approval establishes the support lifetime required for future Stable profiles; it does not itself promote the current Candidate profiles to Stable or claim that an installation is production-qualified.

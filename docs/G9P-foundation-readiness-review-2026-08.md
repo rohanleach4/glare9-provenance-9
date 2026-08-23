@@ -19,7 +19,6 @@ Glare•9 Provenance meets the project definition of **Foundation** maturity: th
 - Exercise the MySQL connector against the designated non-production Workbench-managed database.
 - Verify MySQL least-privilege grants and TLS in a production-like environment.
 - Obtain operator approval and site-specific exercises for deployment, monitoring and incident runbooks.
-- Approve the Candidate format support lifetime before describing the format as Stable.
 - Exercise and approve the selected custody profile, backups and transport identities on the intended host environment.
 - Obtain independent review of the threat model and cryptographic design when resources permit.
 - Obtain an external implementation or review of the conformance vectors when a suitable contributor is available.
@@ -27,4 +26,4 @@ Glare•9 Provenance meets the project definition of **Foundation** maturity: th
 
 These gates are deliberately visible in `TODO.md`. Lack of funds for legal or external review does not prevent an Apache 2.0 source release, but no unavailable review will be implied or fabricated.
 
-The ten-year maintained-verification proposal in `G9P-format-support-lifetime-proposal-v1.md` is ready for product-owner decision. `G9P-independent-review-guide-v1.md` provides a public, reproducible route for community security review and external verifier confirmation without making either review a paid or legal-release prerequisite.
+The product owner approved the ten-year maintained-verification commitment in `G9P-format-support-lifetime-v1.md` on 23 August 2026. `G9P-independent-review-guide-v1.md` provides a public, reproducible route for community security review and external verifier confirmation without making either review a paid or legal-release prerequisite.

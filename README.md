@@ -109,7 +109,7 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-performance-baseline-v1.md`](./docs/G9P-performance-baseline-v1.md) — end-to-end performance harness and measured baseline
 - [`docs/G9P-threat-model-v1.md`](./docs/G9P-threat-model-v1.md) — implementation trust boundaries, controls and residual risks
 - [`docs/G9P-format-compatibility-policy-v1.md`](./docs/G9P-format-compatibility-policy-v1.md) — candidate format stability and retained-verification policy
-- [`docs/G9P-format-support-lifetime-proposal-v1.md`](./docs/G9P-format-support-lifetime-proposal-v1.md) — proposed ten-year maintained-verification commitment
+- [`docs/G9P-format-support-lifetime-v1.md`](./docs/G9P-format-support-lifetime-v1.md) — approved ten-year maintained-verification commitment
 - [`docs/G9P-conformance-vectors-v1.md`](./docs/G9P-conformance-vectors-v1.md) — language-neutral vectors and separate verifier agreement
 - [`docs/G9P-source-package-policy-v1.md`](./docs/G9P-source-package-policy-v1.md) — maintained language, workspace and package compatibility policy
 - [`docs/G9P-supported-api-v1.md`](./docs/G9P-supported-api-v1.md) — supported JavaScript entry points and SemVer boundary
