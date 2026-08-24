@@ -31,7 +31,11 @@ const prefix = `glare9-provenance-${version}/`;
 await mkdir(outputDirectory, { recursive: true });
 const tarPath = resolve(outputDirectory, `glare9-provenance-${version}.tar`);
 const archivePath = `${tarPath}.gz`;
-const archive = spawnSync("git", ["archive", "--format=tar", `--prefix=${prefix}`, commit], { cwd: process.cwd(), encoding: null });
+const archive = spawnSync("git", ["archive", "--format=tar", `--prefix=${prefix}`, commit], {
+  cwd: process.cwd(),
+  encoding: null,
+  maxBuffer: 256 * 1024 * 1024,
+});
 if (archive.error !== undefined) throw archive.error;
 if (archive.status !== 0) throw new Error("git archive failed");
 await writeFile(tarPath, archive.stdout);

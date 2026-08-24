@@ -20,6 +20,7 @@ All notable changes to Provenance•9 are recorded here. The project follows Sem
 - Disabled unavailable private-repository CodeQL database uploads while retaining local analysis.
 - Reframed deployment approval and independent review as disclosed deployment-owner decisions and assurance recommendations.
 - Required UTC outbox timestamp defaults so leasing remains correct in non-UTC server environments.
+- Increased the bounded release-archive buffer so evidence generation supports the complete source tree.
 
 ## 0.1.0-alpha.1
 
