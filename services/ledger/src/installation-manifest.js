@@ -1,5 +1,7 @@
 import { resolve } from "node:path";
 
+const INSTALLATION_PRODUCT_NAMES = new Set(["Provenance•9", "Glare•9 Provenance"]);
+
 function manifestError(code, message) {
   const error = new Error(message);
   error.code = code;
@@ -12,7 +14,7 @@ function exact(value, fields, name) {
 
 export function validateInstallationManifest(manifest, { config, signers }) {
   exact(manifest, ["kind", "version", "product", "installationId", "createdAt", "custodyMode", "dataDirectory", "signerSocketPath", "keys"], "Installation manifest");
-  if (manifest.kind !== "g9p-installation" || manifest.version !== 1 || manifest.product !== "Glare•9 Provenance") manifestError("INSTALLATION_MANIFEST", "Installation manifest identity is invalid");
+  if (manifest.kind !== "g9p-installation" || manifest.version !== 1 || !INSTALLATION_PRODUCT_NAMES.has(manifest.product)) manifestError("INSTALLATION_MANIFEST", "Installation manifest identity is invalid");
   if (typeof manifest.installationId !== "string" || !/^[0-9a-f]{64}$/u.test(manifest.installationId)) manifestError("INSTALLATION_MANIFEST", "Installation identifier is invalid");
   if (typeof manifest.createdAt !== "string" || new Date(manifest.createdAt).toISOString() !== manifest.createdAt) manifestError("INSTALLATION_MANIFEST", "Installation timestamp is invalid");
   if (manifest.custodyMode !== config.custodyMode) manifestError("INSTALLATION_CUSTODY", "Configured custody mode does not match the installation manifest");

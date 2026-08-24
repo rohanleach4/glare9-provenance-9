@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Glare•9 Provenance welcomes unpaid community review as well as separately arranged professional review. No reviewer is asked to endorse the Glare•9 business, provide legal advice or accept operational responsibility; the objective is reproducible technical scrutiny of a named source commit.
+Provenance•9 welcomes unpaid community review as well as separately arranged professional review. No reviewer is asked to endorse the Glare•9 business, provide legal advice or accept operational responsibility; the objective is reproducible technical scrutiny of a named source commit.
 
 ## Security and cryptographic review
 

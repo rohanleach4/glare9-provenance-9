@@ -1,6 +1,6 @@
-# Glare•9 Provenance — Go-Live Checklist
+# Provenance•9 — Go-Live Checklist
 
-Glare•9 Provenance is at Foundation maturity. A particular installation must not be relied upon for production evidence until its applicable live items below are complete, reviewed and evidenced.
+Provenance•9 is at Foundation maturity. A particular installation must not be relied upon for production evidence until its applicable live items below are complete, reviewed and evidenced.
 
 ## Protocol and product decisions
 

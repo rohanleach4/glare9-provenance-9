@@ -1,8 +1,8 @@
-# Glare•9 Provenance Foundation readiness review — August 2026
+# Provenance•9 Foundation readiness review — August 2026
 
 ## Decision
 
-Glare•9 Provenance meets the project definition of **Foundation** maturity: the self-contained ledger core, installed key custody, crash recovery, exact-byte backup and independent offline verification are implemented and repeatably exercised. The product is solid enough for further installation qualification and development, but this review does not approve an arbitrary installation for production or regulated evidence.
+Provenance•9 meets the project definition of **Foundation** maturity: the self-contained ledger core, installed key custody, crash recovery, exact-byte backup and independent offline verification are implemented and repeatably exercised. The product is solid enough for further installation qualification and development, but this review does not approve an arbitrary installation for production or regulated evidence.
 
 ## Completed foundation evidence
 

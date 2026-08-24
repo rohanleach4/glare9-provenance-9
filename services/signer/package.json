@@ -1,7 +1,7 @@
 {
   "name": "@glare9/provenance-self-hosted-signer",
   "version": "0.1.0-alpha.1",
-  "description": "Optional self-hosted signing custody for Glare9 Provenance",
+  "description": "Optional self-hosted signing custody for Provenance•9",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",

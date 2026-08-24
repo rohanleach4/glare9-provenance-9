@@ -1,6 +1,6 @@
 # Code of Conduct
 
-Glare•9 Provenance contributors must communicate professionally, discuss ideas on their merits and make room for differing experience and perspectives. Harassment, threats, discrimination, deliberate humiliation, doxxing and publication of another person’s confidential information are not acceptable.
+Provenance•9 contributors must communicate professionally, discuss ideas on their merits and make room for differing experience and perspectives. Harassment, threats, discrimination, deliberate humiliation, doxxing and publication of another person’s confidential information are not acceptable.
 
 Security reports, customer data, credentials and private operational evidence must not be posted publicly. Follow `SECURITY.md` for vulnerability reporting.
 

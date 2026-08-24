@@ -32,7 +32,9 @@ test("integrated setup creates encrypted keys, protected configuration and a pin
       checkpoint: await loadProtectedSigner(config.checkpointSigningKeyPath, config.keyPassphrasePath),
     };
     const manifest = JSON.parse(await readFile(result.manifestPath, "utf8"));
+    assert.equal(manifest.product, "Provenance•9");
     assert.deepEqual(validateInstallationManifest(manifest, { config, signers }), { installationId: result.installationId, custodyMode: "integrated" });
+    assert.deepEqual(validateInstallationManifest({ ...manifest, product: "Glare•9 Provenance" }, { config, signers }), { installationId: result.installationId, custodyMode: "integrated" });
     assert.equal((await readFile(config.segmentSigningKeyPath, "utf8")).startsWith("-----BEGIN ENCRYPTED PRIVATE KEY-----"), true);
     for (const path of [result.manifestPath, result.ledgerEnvironmentPath, config.keyPassphrasePath, config.segmentSigningKeyPath, config.topologySigningKeyPath, config.checkpointSigningKeyPath]) {
       if (process.platform !== "win32") assert.equal((await stat(path)).mode & 0o077, 0);

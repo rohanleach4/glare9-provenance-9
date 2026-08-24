@@ -1,6 +1,6 @@
 # Contributing
 
-Glare•9 Provenance welcomes design discussion, review, documentation and code contributions under Apache License 2.0. Contributions use the Developer Certificate of Origin 1.1 in `DCO.txt`; no contributor licence agreement is required.
+Provenance•9 welcomes design discussion, review, documentation and code contributions under Apache License 2.0. Contributions use the Developer Certificate of Origin 1.1 in `DCO.txt`; no contributor licence agreement is required.
 
 Contributions must preserve schema neutrality, offline verification, deterministic encoding, immutable sealed bytes, bounded hostile-input parsing and MySQL independence. Permanent format changes require a new applicable version, specification updates, language-neutral conformance vectors and agreement across both repository verifiers.
 

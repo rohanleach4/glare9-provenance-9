@@ -1,4 +1,4 @@
-# Glare•9 Provenance: Sharding
+# Provenance•9: Sharding
 
 ## Purpose
 

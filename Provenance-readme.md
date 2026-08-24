@@ -1,6 +1,6 @@
-# Glare•9 Provenance
+# Provenance•9
 
-Glare•9 Provenance is an independent, open evidence ledger intended to add portable, cryptographically verifiable history to existing governed systems without replacing their operational databases.
+Provenance•9 is an independent, open evidence ledger intended to add portable, cryptographically verifiable history to existing governed systems without replacing their operational databases.
 
 The portable ledger-segment extension is **`.g9p`**.
 
@@ -169,7 +169,7 @@ npm run verify -- path/to/segment.g9p expected-key-id
 The implemented local service topology is:
 
 ```text
-Authenticated Provenance ingestion service
+Authenticated Provenance•9 ingestion service
 Segment writer and sealed-storage contract
 Reader/verifier
 Independent MySQL connector service

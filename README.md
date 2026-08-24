@@ -1,6 +1,8 @@
-# Glare•9 Provenance
+# Provenance•9
 
-Glare•9 Provenance is a Foundation-stage, independently verifiable governance evidence ledger. It preserves append-only event history in compressed, signed `.g9p` segments without requiring an application to replace its operational database.
+Provenance•9 is a Foundation-stage, independently verifiable governance evidence ledger. It preserves append-only event history in compressed, signed `.g9p` segments without requiring an application to replace its operational database.
+
+Provenance•9 is an open-source project stewarded by Glare•9. The established technical identifiers—including `glare9-provenance`, `@glare9/provenance`, `.g9p`, and the `g9p` CLI—remain unchanged for compatibility.
 
 Foundation means the core recording, sealing, recovery and offline-verification path is solid, compatibility-controlled and ready for installation qualification, with room to extend connectors, projections and witnessed finality. It is not a blanket claim that an unqualified deployment is ready for regulated or production evidence; see [`docs/G9P-maturity-policy-v1.md`](./docs/G9P-maturity-policy-v1.md).
 
@@ -134,4 +136,4 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-readiness-bulletin-2026-08-22.md`](./docs/G9P-readiness-bulletin-2026-08-22.md) — latest completed work and remaining one-sentence gates
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
-The open core, specifications and conformance materials are licensed under Apache License 2.0. Glare•9 names and logos remain subject to `TRADEMARKS.md`.
+The open core, specifications and conformance materials are licensed under Apache License 2.0. Provenance•9 and Glare•9 names and logos remain subject to `TRADEMARKS.md`.

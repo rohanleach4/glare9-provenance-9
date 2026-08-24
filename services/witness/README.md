@@ -1,4 +1,4 @@
-# Glare•9 Provenance offline witness
+# Provenance•9 offline witness
 
 This one-shot workspace is operated separately from the ledger. It reads a copied checkpoint, requires an externally approved checkpoint-publisher key ID, verifies the checkpoint and writes one create-only signed witness receipt. It never connects to MySQL or reads event payloads.
 

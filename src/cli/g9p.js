@@ -16,7 +16,7 @@ import {
 } from "../index.js";
 
 function usage() {
-  console.log(`Glare•9 Provenance prototype CLI
+  console.log(`Provenance•9 prototype CLI
 
 Usage:
   npm run demo -- [output-directory]

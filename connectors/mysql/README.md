@@ -1,4 +1,4 @@
-# Glare•9 Provenance MySQL Connector
+# Provenance•9 MySQL Connector
 
 This workspace is a separately runnable transactional-outbox connector. It has no access to customer business tables and never writes `.g9p` files directly.
 
@@ -27,7 +27,7 @@ cp connectors/mysql/.env.example connectors/mysql/.env
 
 For a local server without TLS, set `MYSQL_SSL_MODE=disabled` explicitly. TLS is required by default.
 
-Do not commit database passwords or the Provenance bearer token.
+Do not commit database passwords or the Provenance•9 bearer token.
 
 ## Run
 

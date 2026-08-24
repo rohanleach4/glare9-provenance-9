@@ -1,11 +1,12 @@
 # Changelog
 
-All notable changes to Glare•9 Provenance are recorded here. The project follows Semantic Versioning for software releases, while permanent G9P format and protocol versions remain independent as defined in `docs/G9P-format-compatibility-policy-v1.md`.
+All notable changes to Provenance•9 are recorded here. The project follows Semantic Versioning for software releases, while permanent G9P format and protocol versions remain independent as defined in `docs/G9P-format-compatibility-policy-v1.md`.
 
 ## Unreleased
 
 ### Added
 
+- Adopted the public name Provenance•9, stewarded by Glare•9, while retaining established technical identifiers and compatibility with legacy installation manifests.
 - Experimental immutable evidence ledger core, ledger service, MySQL outbox connector, routing epochs, accepted-first receipts, bounded lifecycle, operational tooling and independent verification assets.
 - Independent-review hardening for exclusive service writer ownership, explicit checkpoint-chain assurance, fail-fast MySQL table validation, bounded varint encoding and redacted intake recovery warnings.
 - Neutral asynchronous Ed25519 signing with local verification before publication, enabling optional self-hosted separated custody without exposing private keys to G9P writers.

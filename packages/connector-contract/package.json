@@ -1,7 +1,7 @@
 {
   "name": "@glare9/provenance-connector-contract",
   "version": "0.1.0-alpha.1",
-  "description": "Transport contract shared by Glare•9 Provenance database connectors",
+  "description": "Transport contract shared by Provenance•9 database connectors",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",

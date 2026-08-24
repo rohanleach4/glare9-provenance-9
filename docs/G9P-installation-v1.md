@@ -1,4 +1,4 @@
-# Glare•9 Provenance installation v1
+# Provenance•9 installation v1
 
 ## Requirements
 
@@ -17,7 +17,7 @@ Run the interactive installer from the repository root:
 npm run setup
 ```
 
-The heading is **Glare•9 Provenance — Installation Mode**. Integrated Custody is the self-contained default. Separated Custody is optional and adds the self-hosted Glare•9 signer over a local Unix-domain socket.
+The heading is **Provenance•9 — Installation Mode**. Integrated Custody is the self-contained default. Separated Custody is optional and adds the self-hosted Provenance•9 signer over a local Unix-domain socket.
 
 For repeatable setup:
 

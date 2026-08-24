@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-This is the public implementation threat model for the Foundation Glare•9 Provenance reference system. It covers writers, readers, connectors, sealed storage, recovery state, signing keys, service credentials and hostile `.g9p` input. It is an engineering artifact, not an independent security assessment; external review is a separate go-live gate.
+This is the public implementation threat model for the Foundation Provenance•9 reference system. It covers writers, readers, connectors, sealed storage, recovery state, signing keys, service credentials and hostile `.g9p` input. It is an engineering artifact, not an independent security assessment; external review is a separate go-live gate.
 
 The protected claim is narrow: accepted evidence is durably retained, sealed history is tamper-evident, and conforming readers can detect unsupported mutation, omission or reordering within the evidence they receive. The ledger does not prove that an assertion is true, that an authenticated source was honest, or that an operator supplied complete history.
 

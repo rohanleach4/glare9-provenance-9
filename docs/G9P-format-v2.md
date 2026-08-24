@@ -2,7 +2,7 @@
 
 ## Status
 
-This document specifies the epoch-aware evolution of the Glare•9 Provenance segment container. Format version 2 binds every segment to a signed routing-epoch descriptor without changing any sealed version 1 bytes.
+This document specifies the epoch-aware evolution of the Provenance•9 segment container. Format version 2 binds every segment to a signed routing-epoch descriptor without changing any sealed version 1 bytes.
 
 Format version 2 is **Candidate** under [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid bytes are frozen for verification, while the Stable support lifetime remains a separate approval. Readers must continue to verify version 1 according to [`G9P-format-v1.md`](./G9P-format-v1.md).
 

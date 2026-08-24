@@ -2,9 +2,9 @@
 
 ## Purpose
 
-G9P writers accept a neutral Ed25519 signing boundary so a Glare•9 Provenance installation can keep private keys either inside its integrated local key store or, optionally, inside a separately running self-hosted Glare•9 signer. The custody choice does not change authenticated `.g9p` formats, key identifiers or offline verifier behavior.
+G9P writers accept a neutral Ed25519 signing boundary so a Provenance•9 installation can keep private keys either inside its integrated local key store or, optionally, inside a separately running self-hosted Provenance•9 signer. The custody choice does not change authenticated `.g9p` formats, key identifiers or offline verifier behavior.
 
-Glare•9 Provenance must not require a third-party signing, cloud, telemetry or online-verification service. Integrated custody is the self-contained default. Separated custody is an optional installation profile and must never become an implicit dependency or a silent fallback path.
+Provenance•9 must not require a third-party signing, cloud, telemetry or online-verification service. Integrated custody is the self-contained default. Separated custody is an optional installation profile and must never become an implicit dependency or a silent fallback path.
 
 ## Signer shape
 
@@ -23,7 +23,7 @@ Local signers may also supply a Node.js private-key object. Installed integrated
 
 **Integrated Custody** keeps the encrypted segment, topology-authority and checkpoint-publisher keys in the installation's protected local key directory. It requires no additional process or network dependency.
 
-**Separated Custody** keeps those encrypted keys in a separately running self-hosted Glare•9 signer. The ledger uses a local Unix-domain socket and receives only public identities and signatures. Historical verification never depends on that signer. If signing is unavailable, accepted intake remains bounded and durable, but the ledger must not publish unsigned evidence or fall back to integrated custody.
+**Separated Custody** keeps those encrypted keys in a separately running self-hosted Provenance•9 signer. The ledger uses a local Unix-domain socket and receives only public identities and signatures. Historical verification never depends on that signer. If signing is unavailable, accepted intake remains bounded and durable, but the ledger must not publish unsigned evidence or fall back to integrated custody.
 
 The selected profile and public key identifiers are recorded in the installation manifest. Changing custody after ledger history exists is a forward key-custody migration and rotation exercise; editing one environment variable is not sufficient.
 

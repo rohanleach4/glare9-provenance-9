@@ -2,7 +2,7 @@
 
 ## Approved commitment
 
-When a G9P evidence profile is promoted from Candidate to Stable, Glare•9 Provenance will retain read-only verification support in the maintained open-source verifier for at least **ten years after the last Glare•9 Provenance release capable of writing that profile**.
+When a G9P evidence profile is promoted from Candidate to Stable, Provenance•9 will retain read-only verification support in the maintained open-source verifier for at least **ten years after the last Provenance•9 release capable of writing that profile**.
 
 The commitment is governed by these rules:
 

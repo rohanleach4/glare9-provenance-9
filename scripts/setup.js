@@ -6,7 +6,7 @@ import { createInterface } from "node:readline/promises";
 
 import { createEncryptedSigner } from "../services/ledger/src/key-store.js";
 
-const PRODUCT = "Glare•9 Provenance";
+const PRODUCT = "Provenance•9";
 const ROLES = Object.freeze({
   segment: "segment-signing-key",
   topology: "topology-authority-key",

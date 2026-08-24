@@ -124,7 +124,7 @@ export async function runPilotQualification() {
   try {
     const profiles = [];
     for (const custodyMode of ["integrated", "separated"]) profiles.push(await exerciseMode(root, custodyMode));
-    return { kind: "g9p-non-production-pilot", version: 1, product: "Glare•9 Provenance", executedAt: new Date().toISOString(), profiles, passed: profiles.every((profile) => profile.installationCreated && profile.interruptionRecovered && profile.exactByteBackupRestored && profile.offlineVerificationPassed), limitations: ["Does not qualify MySQL or TLS", "Does not replace deployment-specific power-loss testing", "Does not constitute operator approval"] };
+    return { kind: "g9p-non-production-pilot", version: 1, product: "Provenance•9", executedAt: new Date().toISOString(), profiles, passed: profiles.every((profile) => profile.installationCreated && profile.interruptionRecovered && profile.exactByteBackupRestored && profile.offlineVerificationPassed), limitations: ["Does not qualify MySQL or TLS", "Does not replace deployment-specific power-loss testing", "Does not constitute operator approval"] };
   } finally { await rm(root, { recursive: true, force: true }); }
 }
 

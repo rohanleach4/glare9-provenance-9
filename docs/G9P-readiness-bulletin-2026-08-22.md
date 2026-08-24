@@ -1,4 +1,4 @@
-# Glare•9 Provenance readiness bulletin — 22 August 2026
+# Provenance•9 readiness bulletin — 22 August 2026
 
 ## Completed or narrowed
 

@@ -1,4 +1,4 @@
-# Glare•9 Provenance Ledger Service
+# Provenance•9 Ledger Service
 
 This workspace exposes the authenticated ingestion boundary for database connectors. It durably retains versioned events before routing and manages bounded active blocks and segments. Contract version 1 seals synchronously; stable contract version 2 accepts first, allows segments to span requests and supports authenticated receipt polling.
 

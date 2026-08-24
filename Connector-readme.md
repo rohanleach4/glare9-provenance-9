@@ -1,8 +1,8 @@
-# Glare•9 Provenance: Connectors
+# Provenance•9: Connectors
 
 ## Purpose
 
-Connectors attach existing services and databases to Glare•9 Provenance without making any database technology a dependency of the ledger core.
+Connectors attach existing services and databases to Provenance•9 without making any database technology a dependency of the ledger core.
 
 The preferred assurance order is:
 
@@ -15,7 +15,7 @@ These methods provide different evidence strengths and must be labelled accurate
 
 ## Connector boundary
 
-A connector translates a source-specific change into the stable Provenance ingestion envelope. It does not write `.g9p` files directly.
+A connector translates a source-specific change into the stable Provenance•9 ingestion envelope. It does not write `.g9p` files directly.
 
 ```text
 Source system
@@ -33,7 +33,7 @@ Sealed .g9p segment
 
 This keeps database credentials, retries and source offsets outside the ledger-format implementation.
 
-Connectors are independently deployable services and npm workspace packages. They remain in the Glare•9 Provenance Git repository initially so changes to the connector contract, service and conformance tests can be reviewed atomically. Independent deployment does not require a separate Git repository.
+Connectors are independently deployable services and npm workspace packages. They remain in the Provenance•9 Git repository initially so changes to the connector contract, service and conformance tests can be reviewed atomically. Independent deployment does not require a separate Git repository.
 
 The shared contract lives under `packages/connector-contract`. Database implementations live under `connectors/<database>` and communicate with `services/ledger` over authenticated HTTP. No connector imports or writes the `.g9p` format directly.
 
@@ -119,7 +119,7 @@ The connector then:
 2. Selects available rows using `FOR UPDATE SKIP LOCKED`.
 3. Assigns one expiring lease to the selected batch.
 4. Commits and releases all row locks.
-5. Sends the envelopes to the Provenance ingestion service outside the transaction.
+5. Sends the envelopes to the Provenance•9 ingestion service outside the transaction.
 6. Receives one validated accepted-first lifecycle receipt per event.
 7. Persists those receipts in a second short transaction; an `accepted` receipt is sufficient to transfer custody to the ledger.
 8. Retries transient failures with exponential delay.
@@ -212,7 +212,7 @@ The current MySQL connector persists the version 2 receipt returned at custody t
 - Prefer customer-side signing before transport.
 - Never log sensitive payloads or credentials.
 - Support payload hashes and customer-controlled content references.
-- Authenticate the Provenance service and validate its receipts.
+- Authenticate the Provenance•9 service and validate its receipts.
 - Record connector version and configuration identity in submitted evidence.
 
 ## Future database connectors

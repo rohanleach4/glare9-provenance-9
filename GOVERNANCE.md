@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Glare•9 Provenance is an open-source project maintained in public for independent use and verification. Glare•9 funds and directs the reference implementation while welcoming review, compatible implementations, documentation and code contributions.
+Provenance•9 is an open-source project maintained in public for independent use and verification and stewarded by Glare•9. Glare•9 funds and directs the reference implementation while welcoming review, compatible implementations, documentation and code contributions.
 
 ## Decision making
 
-The project owner appoints maintainers and retains final responsibility for releases, security response, the Glare•9 brand and the authenticated G9P formats. Routine implementation decisions use public issues and pull requests. Maintainers should explain material decisions and prefer evidence, compatibility and recoverability over convenience.
+The project owner appoints maintainers and retains final responsibility for releases, security response, the Provenance•9 and Glare•9 brands, and the authenticated G9P formats. Routine implementation decisions use public issues and pull requests. Maintainers should explain material decisions and prefer evidence, compatibility and recoverability over convenience.
 
 Changes to sealed bytes, trust semantics, cryptography, release controls or security boundaries require:
 
@@ -20,7 +20,7 @@ If only one maintainer is available, the change remains unreleased until a secon
 
 ## Contributions
 
-Contributors retain copyright in their work and submit it under Apache License 2.0 using the Developer Certificate of Origin process in `CONTRIBUTING.md`. Acceptance does not transfer ownership of a contributor’s unrelated work or grant rights to Glare•9 trademarks.
+Contributors retain copyright in their work and submit it under Apache License 2.0 using the Developer Certificate of Origin process in `CONTRIBUTING.md`. Acceptance does not transfer ownership of a contributor’s unrelated work or grant rights to Provenance•9 or Glare•9 trademarks.
 
 Maintainers may decline changes that weaken schema neutrality, independent verification, deterministic encoding, bounded hostile-input handling, self-contained installation or the no-third-party-dependency principle. Rejection should include a concise technical reason.
 

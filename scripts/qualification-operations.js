@@ -198,7 +198,7 @@ export async function runOperationsQualification() {
     return {
       kind: "g9p-non-production-operations-qualification",
       version: 1,
-      product: "Glare•9 Provenance",
+      product: "Provenance•9",
       executedAt: new Date().toISOString(),
       profiles,
       passed: profiles.every((profile) => profile.passed),

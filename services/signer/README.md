@@ -1,6 +1,6 @@
-# Glare•9 Provenance self-hosted signer
+# Provenance•9 self-hosted signer
 
-This optional service implements the Separated Custody installation profile. It is a Glare•9 Provenance component, uses only Node.js built-ins and the G9P core, and does not call a third party or require network access.
+This optional service implements the Separated Custody installation profile. It is a Provenance•9 component, uses only Node.js built-ins and the G9P core, and does not call a third party or require network access.
 
 The signer holds the encrypted segment, topology-authority and checkpoint-publisher keys. The ledger connects through a local Unix-domain socket, obtains the three public identities and submits only 32-byte domain-separated commitments. The ledger verifies every returned signature before publication. Historical verification never uses this service.
 

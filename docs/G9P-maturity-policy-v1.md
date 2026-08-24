@@ -1,8 +1,8 @@
-# Glare•9 Provenance maturity policy v1
+# Provenance•9 maturity policy v1
 
 ## Current designation: Foundation
 
-Glare•9 Provenance is a **Foundation-stage** open evidence ledger: its core recording, sealing, recovery and offline-verification path is implemented, compatibility-controlled and supported by repeatable assurance. “Foundation” means solid enough to build and qualify installations against while retaining room to extend connectors, operational profiles, projections and witnessed finality.
+Provenance•9 is a **Foundation-stage** open evidence ledger: its core recording, sealing, recovery and offline-verification path is implemented, compatibility-controlled and supported by repeatable assurance. “Foundation” means solid enough to build and qualify installations against while retaining room to extend connectors, operational profiles, projections and witnessed finality.
 
 Foundation does not claim that every deployment is production-qualified. An operator must still exercise its storage, backup, power-loss behavior, identity, TLS, database connector and incident procedures in the environment where evidence will be relied upon.
 

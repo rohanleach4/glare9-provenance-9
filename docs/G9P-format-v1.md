@@ -2,7 +2,7 @@
 
 ## Status
 
-This document specifies the first executable Glare•9 Provenance container. It exists to make the prototype independently inspectable and testable.
+This document specifies the first executable Provenance•9 container. It exists to make the prototype independently inspectable and testable.
 
 Format version 1 is **Candidate** under [`G9P-format-compatibility-policy-v1.md`](./G9P-format-compatibility-policy-v1.md). Existing valid bytes are frozen for verification, while the Stable support lifetime remains a separate approval. Any permanent byte-level change must use a new version and update the specification, verifiers and conformance vectors together.
 

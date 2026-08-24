@@ -1,4 +1,4 @@
-# Glare•9 Provenance non-production operations qualification v1
+# Provenance•9 non-production operations qualification v1
 
 ## Recorded exercise
 
