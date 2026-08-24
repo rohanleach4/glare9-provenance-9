@@ -29,6 +29,10 @@ The current first iteration can:
 - Accept authenticated event batches through a separately runnable ledger service
 - Deliver schema-neutral MySQL transactional-outbox events through a switchable connector service
 
+## Provenance•9
+
+**As with all GitHub repositories, I recommend asking GitHub Copilot to run a security check of the repository before cloning it. There are too many naughty people out there.**
+
 ## Try the first iteration
 
 Requirements: Node.js 24 or later and npm 11 or later.
@@ -143,3 +147,10 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`TODO.md`](./TODO.md) — production go-live checklist
 
 The open core, specifications and conformance materials are licensed under Apache License 2.0. Provenance•9 and Glare•9 names and logos remain subject to `TRADEMARKS.md`.
+
+## Credits
+
+- Architecture and code: Rohan Leach
+- Code reviews: Spaz, Dominic, Charles, OpenAI ChatGPT/Codex and Claude
+- Documentation: Rohan Leach, ChatGPT/Codex and Grammarly
+- Security checks: GitHub Copilot
