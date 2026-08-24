@@ -2,7 +2,7 @@
 
 ## Result
 
-No unresolved byte-level or authenticated-meaning ambiguity was identified in the implemented Candidate segment v1, segment v2, routing epoch v1, checkpoint v1 or witness receipt v1 profiles on 2026-07-30. This is a repository engineering finding, not a substitute for the separately required external implementer and independent cryptographic review.
+No unresolved byte-level or authenticated-meaning ambiguity was identified in the implemented Candidate segment v1, segment v2, routing epoch v1, checkpoint v1 or witness receipt v1 profiles on 2026-07-30. This is a repository engineering finding, not an externally authored verifier result or independent cryptographic review; both remain recommended before broader interoperability or high-assurance claims.
 
 ## Method
 
@@ -27,4 +27,4 @@ The audit compared each normative profile with both repository verifiers and its
 
 ## Change control
 
-Any newly discovered case in which two conforming verifiers could accept identical bytes with different authenticated meaning reopens the go-live gate. Resolution requires a new profile/version or a non-reinterpreting erratum, frozen vectors and agreement testing before release.
+Any newly discovered case in which two conforming verifiers could accept identical bytes with different authenticated meaning blocks promotion and reliance on the ambiguous interpretation. Resolution requires a new profile/version or a non-reinterpreting erratum, frozen vectors and agreement testing before release.

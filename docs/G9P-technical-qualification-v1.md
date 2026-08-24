@@ -2,7 +2,7 @@
 
 ## Scope
 
-The technical campaign groups installation-selected custody, Workbench-managed MySQL behavior, restricted MySQL TLS identity, security findings and operator approval. Repository automation can validate prerequisites and test behavior, but it cannot manufacture a production-like database, site-specific recovery result or human authorization.
+The technical campaign groups installation-selected custody, Workbench-managed MySQL behavior, restricted MySQL TLS identity, security findings and deployment-owner review. Repository automation can validate prerequisites and test behavior, but it cannot manufacture a production-like database, site-specific recovery result or a deployment owner's reliance decision.
 
 ## Redacted preflight
 
@@ -12,7 +12,7 @@ The technical campaign groups installation-selected custody, Workbench-managed M
 npm run qualification:technical -- --ledger-env /srv/glare9-provenance/ledger.env
 ```
 
-The report records booleans for `MYSQL_INTEGRATION_URL` and `MYSQL_QUALIFICATION_URL`; it never reads their values into output. It records Git commit/cleanliness, open finding counts, prerequisite readiness and `approvalsRecorded: false`. Generated reports belong in an ignored evidence store outside the repository.
+The report records booleans for `MYSQL_INTEGRATION_URL` and `MYSQL_QUALIFICATION_URL`; it never reads their values into output. It records Git commit/cleanliness, open finding counts, prerequisite readiness and `deploymentDecisionRecorded: false`. Repository automation never makes that deployment decision. Generated reports belong in an ignored evidence store outside the repository.
 
 ## Live exercises
 
@@ -29,4 +29,4 @@ Then run `npm run audit:dependencies`, `npm run scan:repository`, `npm run fuzz`
 
 ## Closure rule
 
-The live deployment gates remain open until the exercises pass in the named environment, the findings register and current scans contain no unresolved critical/high issue, and the responsible operators approve custody, any trust bundle, TLS identity and the evidence record. Presence of a green preflight alone closes none of those gates.
+The deployment owner should repeat applicable exercises in the named environment, confirm that the findings register and current scans contain no unresolved critical/high issue, review custody, any trust bundle, TLS identity and the evidence record, and record the resulting reliance decision. A green preflight alone does not establish those environment-specific facts.

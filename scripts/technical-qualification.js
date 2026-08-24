@@ -84,7 +84,7 @@ export async function assessTechnicalQualification({ environment = process.env, 
     mysql,
     security,
     readyForLiveExercises: clean && signer.valid && mysql.integrationConfigured && mysql.qualificationConfigured && security.noKnownCriticalOrHigh,
-    approvalsRecorded: false,
+    deploymentDecisionRecorded: false,
   };
 }
 

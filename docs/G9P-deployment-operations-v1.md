@@ -40,7 +40,7 @@ The Foundation single-node profile has no uptime SLA and permits planned downtim
 4. preserve zero logical-event loss after an acknowledged accepted receipt when the qualified storage durability assumptions hold;
 5. rebuild sealed receipts and shard heads entirely from verified history.
 
-Recovery-time and availability targets are deployment policy. Before production approval, operators must measure restart, restore and backlog-clearance time at peak retained volume and set reviewed objectives. The current baseline is evidence only, not an RTO promise.
+Recovery-time and availability targets are deployment policy. Before claiming measured recovery or availability assurance, the deployment owner should measure restart, restore and backlog-clearance time at peak retained volume and record the resulting objectives. The current baseline is evidence only, not an RTO promise.
 
 ## Scaling rules
 

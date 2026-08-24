@@ -24,6 +24,8 @@ test("technical qualification preflight is redacted and incomplete without live 
   assert.equal(report.signer.configured, false);
   assert.equal(report.mysql.integrationConfigured, false);
   assert.equal(report.readyForLiveExercises, false);
+  assert.equal(report.deploymentDecisionRecorded, false);
+  assert.equal(Object.hasOwn(report, "approvalsRecorded"), false);
   assert.equal(JSON.stringify(report).includes("URL"), false);
 });
 

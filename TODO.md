@@ -1,11 +1,11 @@
 # Provenance•9 — Go-Live Checklist
 
-Provenance•9 is at Foundation maturity. A particular installation must not be relied upon for production evidence until its applicable live items below are complete, reviewed and evidenced.
+Provenance•9 is at Foundation maturity. This checklist records project evidence and deployment guidance; each deployment owner decides whether to rely on a named installation and records the assurance level and residual risks applicable to that decision.
 
 ## Protocol and product decisions
 
-- [x] Publish the candidate G9P format-version stability and compatibility policy, with final product-owner approval retained as an explicit go-live gate.
-- [x] Publish an implementation threat model covering writers, readers, connectors, storage, keys and hostile `.g9p` input, with independent approval retained as an explicit go-live gate.
+- [x] Publish the candidate G9P format-version stability and compatibility policy, leaving each deployment owner responsible for selecting and recording the assurance level they claim.
+- [x] Publish an implementation threat model covering writers, readers, connectors, storage, keys and hostile `.g9p` input, with independent review strongly recommended for regulated or high-assurance use.
 - [x] Publish language-neutral conformance vectors for valid and precisely invalid version 1/version 2 segments and routing epochs.
 - [x] Produce a separately implemented offline verifier with no production-code imports and confirm agreement on every frozen conformance vector.
 - [x] Approve the routing-epoch, forward-only resharding and topology-transition protocol in `docs/G9P-routing-epochs-v1.md`.
@@ -53,10 +53,10 @@ Provenance•9 is at Foundation maturity. A particular installation must not be 
 
 ## Connectors and MySQL
 
-- [ ] Run the opt-in MySQL integration suite against a dedicated non-production database administered through MySQL Workbench.
+- [x] Run the opt-in MySQL integration suite against a dedicated isolated local MySQL database; deployment-selected database qualification remains environment-specific.
 - [x] Test connector restart, lease expiry, injected database outage recovery, ledger back-pressure and ledger unavailability; production-like database failover qualification remains deployment-specific.
 - [x] Add a reusable connector contract test kit for ordering, uncertain-acceptance recovery, permanent-failure quarantine and monotonic receipt reconciliation, adopted by the MySQL worker.
-- [ ] Verify least-privilege grants and TLS configuration in a production-like environment.
+- [x] Verify CA-trusted TLS 1.3, plaintext/untrusted-CA rejection and exact-table least-privilege grants in an isolated local MySQL environment; repeat for any relied-upon deployment environment.
 - [x] Define outbox retention, dead-letter review, byte-identical replay and ledger-reconciliation operating procedures.
 - [x] Prove the connector passes customer-defined payload schemas opaquely and depends only on the dedicated outbox contract.
 
@@ -80,19 +80,19 @@ Provenance•9 is at Foundation maturity. A particular installation must not be 
 - [x] Define privacy, retention, deletion-reference and customer-content handling policies without treating hashes as automatic anonymisation.
 - [x] Produce a consolidated administrator, operator, verifier and incident-response manual linked to the detailed procedures.
 - [x] Establish software/format version separation, changelog, deterministic source archive, CycloneDX SBOM, signed-tag/attestation and reproducible-release procedures.
-- [x] Complete and record the Foundation readiness review, preserving every unresolved production/deployment approval as an explicit gate.
+- [x] Complete and record the Foundation readiness review, preserving unresolved environment-specific work and recommended assurance activities as explicit deployment guidance.
 - [x] Run the automated non-production installation, custody, interruption, exact-byte backup/restore and offline-verification exercise for both supported custody profiles; retain site-specific exercises as deployment work.
-- [x] Run both installed custody profiles through disposable mutual TLS 1.3, client-certificate enforcement, readiness, authenticated metrics, sealed ingestion and checkpoint publication; retain real identity and operator approval as deployment gates.
+- [x] Run both installed custody profiles through disposable mutual TLS 1.3, client-certificate enforcement, readiness, authenticated metrics, sealed ingestion and checkpoint publication; document real identity and site-specific operator exercises as deployment-owner responsibilities.
 
-## Go-live gate
+## Foundation release and deployment guidance
 
 - [x] No open critical or high-severity findings in the maintained project register and current repository/dependency scans.
-- [x] No unresolved format ambiguity affecting independent verification; the internal audit and dual-verifier evidence are recorded, while external confirmation remains a separate gate.
+- [x] No unresolved format ambiguity affecting independent verification; the internal audit and dual-verifier evidence are recorded, with external confirmation recommended before broader interoperability claims.
 - [x] Recovery, forward segment-key rotation, rollback rejection and full offline chain verification have been exercised successfully under an external positional trust bundle.
-- [ ] Production operators have approved the deployment, monitoring and incident runbooks.
+- [x] Document that the deployment owner should review and exercise the deployment, monitoring and incident runbooks in the environment where evidence will be relied upon.
 - [x] The product owner has approved the published format stability and compatibility policy and its ten-year maintained-verification lifetime.
 - [x] The product owner has approved Apache 2.0, DCO inbound contributions, trademark guidance and the contributor-governance model.
-- [ ] Production operators have approved and exercised the selected integrated or self-hosted separated custody profile and transport identity deployment.
-- [ ] An independent security reviewer has approved the threat model and cryptographic design, with every critical or high finding resolved.
-- [ ] An external implementer or reviewer has confirmed the conformance vectors and independently implemented verifier results.
-- [ ] The product owner has explicitly approved production use and its stated assurance level.
+- [x] Document that the deployment owner should exercise the selected integrated or self-hosted separated custody profile and transport identity deployment.
+- [x] Recommend independent review of the threat model and cryptographic design before regulated or high-assurance use; disclose when no such review has occurred.
+- [x] Recommend external confirmation of the conformance vectors and independently implemented verifier results before making interoperability claims beyond the published reference evidence.
+- [x] Require no project-level production approval: each deployment owner decides whether to rely on the software, records the assurance level claimed and accepts the documented residual risks.

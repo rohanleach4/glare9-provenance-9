@@ -231,5 +231,5 @@ The storage-neutral publication and byte-verification boundary is documented in 
 - There is no checkpoint or witness container yet.
 - Events do not yet carry independent actor signatures.
 - Key registration, rotation and revocation are not implemented.
-- Language-neutral conformance vectors and a separately implemented verifier are published; external cross-language confirmation remains a go-live gate.
+- Language-neutral conformance vectors and a separately implemented verifier are published; external cross-language confirmation is recommended before making broader interoperability claims.
 - Zstandard compressor output does not have to be byte-identical across implementations; the stored compressed bytes are committed by their individual segment.

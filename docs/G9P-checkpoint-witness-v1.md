@@ -2,7 +2,7 @@
 
 ## Status
 
-This document specifies the implemented Candidate protocol. It does not alter segment versions 1 or 2. Checkpoint and witness containers have primary and independent verification plus conformance vectors; a published support lifetime and remaining independent review gates are required before Stable promotion.
+This document specifies the implemented Candidate protocol. It does not alter segment versions 1 or 2. Checkpoint and witness containers have primary and independent verification plus conformance vectors. Independent review is strongly recommended before Stable promotion or high-assurance reliance, and its presence or absence must be disclosed in the promotion or deployment decision record.
 
 ## Checkpoint descriptor
 
@@ -30,4 +30,4 @@ The ledger exposes a separately authenticated checkpoint-administration operatio
 
 The reference witness is a one-shot, separately deployable workspace under `services/witness`. It reads a copied checkpoint, trusts only configured publisher key IDs, uses its own externally supplied key and writes one create-only receipt. The threshold verifier accepts only a sorted unique witness membership, validates every receipt and counts each matching trusted witness key once.
 
-Generated local checkpoint-publisher keys and the reference witness file-key adapter are development facilities. Production signer custody, operational independence and stronger full-history witness policy remain approval and deployment gates.
+Generated local checkpoint-publisher keys and the reference witness file-key adapter are development facilities. Production signer custody, operational independence and stronger full-history witness policy remain deployment-owner configuration and exercise responsibilities.

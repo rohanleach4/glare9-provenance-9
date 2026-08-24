@@ -32,5 +32,8 @@ jobs:
       - uses: github/codeql-action/analyze@v4
         with:
           # Private source development does not include GitHub Code Security.
-          # Analysis still runs; publication begins automatically when public.
+          # Analysis still runs locally; publication begins automatically when public.
           upload: ${{ github.event.repository.private && 'never' || 'always' }}
+          # CodeQL otherwise attempts a separate database upload even when SARIF
+          # publication is disabled, producing noisy retries against private repos.
+          upload-database: ${{ !github.event.repository.private }}

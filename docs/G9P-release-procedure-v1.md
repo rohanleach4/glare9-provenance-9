@@ -12,9 +12,9 @@ All packages remain registry-private during the Foundation source-release series
 
 ## Signing and provenance
 
-The release tag must be an annotated tag signed by an approved maintainer SSH or GPG key held under Glare•9-controlled local custody. Release assets must use the exact locally verified checksum. The signed tag, deterministic source archive, checksum, SBOM and `release-evidence.json` bind the release version to its source commit without requiring a hosted signing or attestation service. Signing keys must not be stored in the repository or ordinary workflow variables.
+The release tag must be an annotated tag signed by an approved maintainer SSH or GPG key held under Glare•9-controlled local custody. Authorized public signing identities are recorded in `RELEASE_SIGNERS`; private keys must not be stored in the repository or ordinary workflow variables. Release assets must use the exact locally verified checksum. The signed tag, deterministic source archive, checksum, SBOM and `release-evidence.json` bind the release version to its source commit without requiring a hosted signing or attestation service.
 
-Two-person review confirms version, changelog, clean status, tag identity, test evidence, dependency findings, SBOM, reproducibility result and asset hashes. Revocation never rewrites an old release; publish a security advisory and a new signed release.
+An independent second-person review of version, changelog, clean status, tag identity, test evidence, dependency findings, SBOM, reproducibility result and asset hashes is recommended. When no second reviewer is available, the maintainer may perform and record the same checklist as a disclosed single-maintainer verification; the release must not imply independent review. Revocation never rewrites an old release; publish a security advisory and a new signed release.
 
 ## Deferred approval
 

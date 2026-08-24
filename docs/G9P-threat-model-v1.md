@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-This is the public implementation threat model for the Foundation Provenance•9 reference system. It covers writers, readers, connectors, sealed storage, recovery state, signing keys, service credentials and hostile `.g9p` input. It is an engineering artifact, not an independent security assessment; external review is a separate go-live gate.
+This is the public implementation threat model for the Foundation Provenance•9 reference system. It covers writers, readers, connectors, sealed storage, recovery state, signing keys, service credentials and hostile `.g9p` input. It is an engineering artifact, not an independent security assessment. Independent review is strongly recommended before regulated or high-assurance use, and deployments must not imply that such review occurred when it did not.
 
 The protected claim is narrow: accepted evidence is durably retained, sealed history is tamper-evident, and conforming readers can detect unsupported mutation, omission or reordering within the evidence they receive. The ledger does not prove that an assertion is true, that an authenticated source was honest, or that an operator supplied complete history.
 
@@ -39,12 +39,12 @@ The current single-node profile does not defend availability against host compro
 | decompression bomb or hostile lengths | file, frame, collection, record and output ceilings before allocation/decompression | deployment memory limits and sustained-load qualification remain necessary |
 | parser crash or differential interpretation | bounded fuzz/property tests and shared conformance vectors with a separate verifier | more languages and independent fuzzing remain desirable |
 | partial sealing or acknowledgement loss | `.g9p.part`, file/directory sync, create-only promotion, durable intake and idempotent retry | physical power-loss guarantees depend on qualified storage |
-| connector outage or uncertain acceptance | leases, identical retry, monotonic receipt reconciliation and dead letters | production-like MySQL failover/TLS qualification remains open |
+| connector outage or uncertain acceptance | leases, identical retry, monotonic receipt reconciliation, dead letters and isolated local MySQL/TLS qualification | customer-selected database failover and environment qualification remain deployment responsibilities |
 | credential theft or replay | separate ingestion/admin credentials, bounded APIs, redacted diagnostics, TLS 1.3/mTLS and overlapping credential support | real deployment identity issuance, rotation and operator exercise remain open |
 | signing-key theft | encrypted integrated custody, optional self-hosted separated custody, external trust bootstrap and forward revocation procedure | a compromised service account/host can still reach signing; site-specific custody exercise remains open |
 | storage replacement or omission | offline verification, exact-byte backup, chain reconstruction, checkpoints and separately runnable reference witness | independently administered witness coverage and retained trusted heads remain deployment policy |
 | customer-content disclosure | aggregate metrics, diagnostic redaction, schema-neutral connector and published privacy/content policy | deployment retention, access and lawful-basis decisions remain operator responsibilities |
-| malicious dependency or build | lockfile, dependency audit, CodeQL, repository scanning, SBOM and reproducible signed-release procedure | the first public signed release and its two-person evidence review have not occurred |
+| malicious dependency or build | lockfile, dependency audit, CodeQL, repository scanning, SBOM and reproducible signed-release procedure | the first signed source release and its recorded maintainer-review evidence remain pending |
 
 ## Trust decisions a verifier must make
 
@@ -65,4 +65,4 @@ Verification has distinct outcomes: structurally parsed, cryptographically self-
 
 ## Review and maintenance
 
-Any permanent format, trust, storage, connector-custody or key-lifecycle change updates this document and its conformance/failure evidence. An independent reviewer must validate threat completeness, cryptographic construction, parser boundaries and residual-risk wording before production use. Findings remain open go-live items until explicitly resolved or accepted by the product owner.
+Any permanent format, trust, storage, connector-custody or key-lifecycle change updates this document and its conformance/failure evidence. Deployment owners should obtain independent review of threat completeness, cryptographic construction, parser boundaries and residual-risk wording before regulated or high-assurance use. Where independent review is not available, the deployment owner must disclose that limitation, avoid claiming independent assurance, and explicitly accept the residual risk. Critical or high findings remain release-blocking until resolved; lower findings may be resolved or accepted in the deployment decision record.

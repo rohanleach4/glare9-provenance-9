@@ -4,6 +4,8 @@ Provenance•9 is a Foundation-stage, independently verifiable governance eviden
 
 Provenance•9 is an open-source project stewarded by Glare•9. The established technical identifiers—including `glare9-provenance`, `@glare9/provenance`, `.g9p`, and the `g9p` CLI—remain unchanged for compatibility.
 
+Planning an evaluation, commercial deployment or customer-specific assurance programme? See [`WHAT_YOU_NEED_FOR_COMMERCIAL_RELEASE.md`](./WHAT_YOU_NEED_FOR_COMMERCIAL_RELEASE.md). Commercial and contracted-development enquiries may be sent to **hello@glare9.com**.
+
 Foundation means the core recording, sealing, recovery and offline-verification path is solid, compatibility-controlled and ready for installation qualification, with room to extend connectors, projections and witnessed finality. It is not a blanket claim that an unqualified deployment is ready for regulated or production evidence; see [`docs/G9P-maturity-policy-v1.md`](./docs/G9P-maturity-policy-v1.md).
 
 The current first iteration can:
@@ -116,8 +118,11 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-source-package-policy-v1.md`](./docs/G9P-source-package-policy-v1.md) — maintained language, workspace and package compatibility policy
 - [`docs/G9P-supported-api-v1.md`](./docs/G9P-supported-api-v1.md) — supported JavaScript entry points and SemVer boundary
 - [`docs/G9P-maturity-policy-v1.md`](./docs/G9P-maturity-policy-v1.md) — Foundation software, Candidate formats and deployment qualification
+- [`WHAT_YOU_NEED_FOR_COMMERCIAL_RELEASE.md`](./WHAT_YOU_NEED_FOR_COMMERCIAL_RELEASE.md) — proportionate evaluation, commercial deployment and higher-assurance paths
 - [`docs/G9P-privacy-content-policy-v1.md`](./docs/G9P-privacy-content-policy-v1.md) — privacy, retention, deletion-reference and content handling
 - [`docs/G9P-release-procedure-v1.md`](./docs/G9P-release-procedure-v1.md) — versioning, SBOM, signing and reproducible source releases
+- [`docs/G9P-release-review-0.1.0-alpha.2.md`](./docs/G9P-release-review-0.1.0-alpha.2.md) — disclosed single-maintainer prerelease verification record
+- [`docs/G9P-deployment-decision-template.md`](./docs/G9P-deployment-decision-template.md) — adopter-owned named-installation reliance record
 - [`docs/G9P-licence-governance-v1.md`](./docs/G9P-licence-governance-v1.md) — Apache 2.0 licensing, DCO contributions and project governance
 - [`docs/G9P-key-identity-protocol-v1.md`](./docs/G9P-key-identity-protocol-v1.md) — key lifecycle and customer-controlled signing candidate
 - [`docs/G9P-signing-custody-contract-v1.md`](./docs/G9P-signing-custody-contract-v1.md) — self-contained integrated and optional self-hosted separated signing custody
@@ -125,6 +130,7 @@ See [`connectors/mysql/README.md`](./connectors/mysql/README.md) for setup, perm
 - [`docs/G9P-checkpoint-witness-v1.md`](./docs/G9P-checkpoint-witness-v1.md) — implemented Candidate checkpoint, witness and threshold policy
 - [`services/witness/README.md`](./services/witness/README.md) — separately operated reference witness
 - [`docs/G9P-mysql-qualification-v1.md`](./docs/G9P-mysql-qualification-v1.md) — Workbench-managed integration and TLS/grant qualification
+- [`docs/G9P-local-mysql-qualification-2026-08-24.md`](./docs/G9P-local-mysql-qualification-2026-08-24.md) — dated local MySQL TLS and least-privilege evidence with portability limits
 - [`docs/G9P-deployment-operations-v1.md`](./docs/G9P-deployment-operations-v1.md) — supported topology, capacity and availability profile
 - [`docs/G9P-observability-v1.md`](./docs/G9P-observability-v1.md) — health, readiness, metrics and alerting
 - [`docs/G9P-incident-runbooks-v1.md`](./docs/G9P-incident-runbooks-v1.md) — evidence-preserving incident procedures

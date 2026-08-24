@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import mysql from "mysql2/promise";
@@ -6,6 +7,7 @@ import mysql from "mysql2/promise";
 import { MySqlOutboxRepository } from "../src/outbox-repository.js";
 
 const mysqlUrl = process.env.MYSQL_INTEGRATION_URL;
+const mysqlCaPath = process.env.MYSQL_INTEGRATION_CA_PATH;
 const integration = mysqlUrl === undefined ? test.skip : test;
 
 function sampleEvent(eventId) {
@@ -24,7 +26,12 @@ function sampleEvent(eventId) {
 }
 
 integration("repository leases, delivers, retries and dead-letters real MySQL rows", async () => {
-  const pool = mysql.createPool(mysqlUrl);
+  const pool = mysql.createPool({
+    uri: mysqlUrl,
+    ...(mysqlCaPath === undefined ? {} : {
+      ssl: { ca: await readFile(mysqlCaPath, "utf8"), rejectUnauthorized: true },
+    }),
+  });
   const tableName = `provenance_outbox_test_${process.pid}`;
   const table = `\`${tableName}\``;
   try {
@@ -33,7 +40,7 @@ integration("repository leases, delivers, retries and dead-letters real MySQL ro
         sequence_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         event_id VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
         envelope JSON NOT NULL,
-        available_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        available_at DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
         lease_owner VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NULL,
         lease_token CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
         lease_expires_at DATETIME(6) NULL,
@@ -43,7 +50,7 @@ integration("repository leases, delivers, retries and dead-letters real MySQL ro
         receipt JSON NULL,
         last_error_code VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NULL,
         last_error_message VARCHAR(1024) NULL,
-        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        created_at DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
         PRIMARY KEY (sequence_id),
         UNIQUE KEY uq_event_id (event_id),
         KEY ix_available (delivered_at, dead_lettered_at, available_at, lease_expires_at, sequence_id)

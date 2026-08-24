@@ -2,7 +2,7 @@
 
 ## Scope and outcome
 
-An external agent reviewed the pre-Foundation repository on 2026-07-30 and reported no critical or exploitable vulnerability. This is useful independent engineering feedback, but it is not the formal independent security approval required by the go-live checklist.
+An external agent reviewed the pre-Foundation repository on 2026-07-30 and reported no critical or exploitable vulnerability. This is useful independent engineering feedback, but it is not a formal independent security assessment. Regulated or high-assurance deployments should commission review appropriate to their risk and must not describe this earlier feedback as formal approval.
 
 The review raised nine findings. The project accepted findings 1–5 with the refinements below and recorded explicit decisions for findings 6–9.
 

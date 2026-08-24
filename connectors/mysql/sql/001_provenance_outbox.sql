@@ -5,7 +5,7 @@ CREATE TABLE provenance_outbox (
   sequence_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   event_id VARCHAR(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
   envelope JSON NOT NULL,
-  available_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  available_at DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
   lease_owner VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NULL,
   lease_token CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
   lease_expires_at DATETIME(6) NULL,
@@ -15,7 +15,7 @@ CREATE TABLE provenance_outbox (
   receipt JSON NULL,
   last_error_code VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NULL,
   last_error_message VARCHAR(1024) NULL,
-  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  created_at DATETIME(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
   PRIMARY KEY (sequence_id),
   UNIQUE KEY uq_provenance_outbox_event_id (event_id),
   KEY ix_provenance_outbox_available (

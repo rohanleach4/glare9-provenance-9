@@ -99,10 +99,23 @@ npm run test:integration --workspace=@glare9/provenance-connector-mysql
 
 The test creates and drops only a uniquely named `provenance_outbox_test_<process-id>` table. Never point it at production.
 
-Least-privilege/TLS qualification uses the actual connector identity, which must have only `SELECT` and `UPDATE` on the dedicated outbox. Set `MYSQL_QUALIFICATION_URL` for that non-production Workbench-managed account and run:
+Least-privilege/TLS qualification uses the actual connector identity, which must have only `SELECT` and `UPDATE` on the dedicated outbox. Set the following for that non-production account:
+
+- `MYSQL_QUALIFICATION_URL` — connector connection URL;
+- `MYSQL_QUALIFICATION_CA_PATH` — trusted CA PEM path;
+- `MYSQL_QUALIFICATION_UNTRUSTED_CA_PATH` — a different disposable CA used to prove rejection;
+- `MYSQL_QUALIFICATION_DATABASE` — exact database containing the outbox;
+- `MYSQL_QUALIFICATION_TABLE` — exact outbox table, normally `provenance_outbox`;
+- `MYSQL_QUALIFICATION_OTHER_TABLE` — a table the connector must not be able to read.
+
+Then run:
 
 ```bash
 npm run test:qualification --workspace=@glare9/provenance-connector-mysql
 ```
 
-This read-only check requires a negotiated TLS cipher and rejects broad or DDL/DML grants. It does not create, alter or drop anything.
+The check requires CA-verified TLS 1.3 and exact-table grants. It proves `SELECT` and no-op `UPDATE` succeed; `INSERT`, `DELETE`, `ALTER` and cross-table `SELECT` fail; plaintext is rejected; and a connection through an untrusted CA is rejected. It makes no persistent database change.
+
+Set `MYSQL_INTEGRATION_CA_PATH` alongside `MYSQL_INTEGRATION_URL` when the administrative integration exercise must verify a private or local CA.
+
+A local pass qualifies this connector, driver and MySQL configuration only. It does not qualify another database product, MySQL version, host, network, certificate authority, account-provisioning system or production environment.
